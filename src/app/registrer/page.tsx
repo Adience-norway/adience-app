@@ -254,6 +254,13 @@ export default function RegistrerPage() {
       rolle: "arena_admin",
     });
 
+    // Send welcome email (non-blocking — failure doesn't block success)
+    fetch("/api/send-welcome", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ epost: form.epost, fornavn: form.fornavn, streamId: stream_id }),
+    }).catch(() => {});
+
     // Generate QR code
     try {
       const qr = await QRCode.toDataURL(`https://cast.adience.no/${stream_id}`, {
