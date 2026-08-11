@@ -50,6 +50,26 @@ type Tab = "oversikt" | "speakerteam" | "statistikk" | "media";
 
 const TAB_IDS: Tab[] = ["oversikt", "speakerteam", "statistikk", "media"];
 
+// Samme lister som registrer/RegistrerPageContent.tsx sitt registreringsskjema
+// bruker — må holdes i sync manuelt (ingen delt konstant-fil i denne
+// kodebasen), slik at et lagret KATEGORI/LAND/KAPASITET-valg her alltid
+// matcher et gyldig alternativ i nedtrekkslisten.
+const KATEGORIER = [
+  "Indoor Sports Venue",
+  "Outdoor Sports Venue",
+  "Indoor Cultural Venue",
+  "Outdoor Cultural Venue",
+  "Cultural Center",
+  "Theatre",
+  "Opera House",
+  "Festival",
+  "Podcast",
+  "Live",
+  "Other",
+];
+const LAND = ["Norge", "Sverige", "Danmark", "Finland", "Spania", "Tyskland", "UK", "Annet"];
+const KAPASITETER = ["Under 500", "500–2000", "2000–5000", "5000–15000", "15000+"];
+
 /* ─── ROOT ─── */
 
 export function MinSideContent({ dict, locale }: { dict: Dictionary; locale: Locale }) {
@@ -446,6 +466,10 @@ function OversiktSection({
       </div>
 
       <div style={{ marginTop: "24px" }}>
+        <KontaktinfoSection arena={arena} onSaved={onChanged} dict={dict} />
+      </div>
+
+      <div style={{ marginTop: "24px" }}>
         <GeofenceSection arena={arena} onSaved={onChanged} dict={dict} />
       </div>
 
@@ -641,6 +665,135 @@ function StatistikkSection({
 }
 
 /* ─── 3. GEOFENCE ─── */
+
+// Alle feltene fra registreringsskjemaet (registrer/RegistrerPageContent.tsx)
+// som ikke allerede dekkes av ArenaProfilCard (beskrivelse/forsidebilde) eller
+// AdresseSection (gateadresse/postnummer/by) — arenaeier kunne tidligere KUN
+// rette disse gjennom Admin. Ett samlet lagre-kall for hele skjemaet, samme
+// mønster som AddArenaModal i admin/AdminContent.tsx.
+function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
+  const t = dict.minSide.kontaktinfo;
+  const [form, setForm] = useState({
+    arenanavn: arena.arenanavn ?? "",
+    kategori: arena.kategori ?? "",
+    land: arena.land ?? "Norge",
+    kapasitet: arena.kapasitet ?? "",
+    org_nummer: arena.org_nummer ?? "",
+    fornavn: arena.fornavn ?? "",
+    etternavn: arena.etternavn ?? "",
+    epost: arena.epost ?? "",
+    telefon: arena.telefon ?? "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  const opprinnelig = {
+    arenanavn: arena.arenanavn ?? "", kategori: arena.kategori ?? "", land: arena.land ?? "Norge",
+    kapasitet: arena.kapasitet ?? "", org_nummer: arena.org_nummer ?? "", fornavn: arena.fornavn ?? "",
+    etternavn: arena.etternavn ?? "", epost: arena.epost ?? "", telefon: arena.telefon ?? "",
+  };
+  const harEndring = Object.keys(form).some((k) => form[k as keyof typeof form] !== opprinnelig[k as keyof typeof opprinnelig]);
+
+  function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    const { error } = await supabase
+      .from("arenaer")
+      .update({
+        arenanavn: form.arenanavn,
+        kategori: form.kategori || null,
+        land: form.land || null,
+        kapasitet: form.kapasitet || null,
+        org_nummer: form.org_nummer || null,
+        fornavn: form.fornavn || null,
+        etternavn: form.etternavn || null,
+        epost: form.epost || null,
+        telefon: form.telefon || null,
+      })
+      .eq("id", arena.id);
+    setSaving(false);
+    if (error) { setError(error.message); return; }
+    setSaved(true);
+    onSaved();
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <div style={cardStyle}>
+      <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.title}</h3>
+      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "20px" }}>
+        {t.subtitle}
+      </p>
+
+      <label style={fieldLabelStyle}>{t.fieldArenanavn}</label>
+      <input type="text" name="arenanavn" value={form.arenanavn} onChange={handleChange} style={{ ...inputStyle, marginBottom: "16px" }} />
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldKategori}</label>
+          <select name="kategori" value={form.kategori} onChange={handleChange} style={inputStyle}>
+            <option value="">{t.kategoriPlaceholder}</option>
+            {KATEGORIER.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldLand}</label>
+          <select name="land" value={form.land} onChange={handleChange} style={inputStyle}>
+            {LAND.map((l) => <option key={l} value={l}>{l}</option>)}
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldKapasitet}</label>
+          <select name="kapasitet" value={form.kapasitet} onChange={handleChange} style={inputStyle}>
+            <option value="">{t.kapasitetPlaceholder}</option>
+            {KAPASITETER.map((k) => <option key={k} value={k}>{k}</option>)}
+          </select>
+        </div>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldOrgNummer}</label>
+          <input type="text" name="org_nummer" value={form.org_nummer} onChange={handleChange} style={inputStyle} />
+        </div>
+      </div>
+
+      <h4 style={{ ...sectionHeadingStyle, fontSize: "15px", marginTop: "24px", marginBottom: "16px", color: "rgba(255,255,255,0.7)" }}>{t.contactHeading}</h4>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldFornavn}</label>
+          <input type="text" name="fornavn" value={form.fornavn} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldEtternavn}</label>
+          <input type="text" name="etternavn" value={form.etternavn} onChange={handleChange} style={inputStyle} />
+        </div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldEpost}</label>
+          <input type="email" name="epost" value={form.epost} onChange={handleChange} style={inputStyle} />
+        </div>
+        <div>
+          <label style={fieldLabelStyle}>{t.fieldTelefon}</label>
+          <input type="tel" name="telefon" value={form.telefon} onChange={handleChange} style={inputStyle} />
+        </div>
+      </div>
+
+      {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
+      {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.saved}</p>}
+      <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
+        {saving ? t.saving : t.saveButton}
+      </button>
+    </div>
+  );
+}
 
 function GeofenceSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
   return (

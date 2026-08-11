@@ -122,6 +122,17 @@ const no: {
       stepGeofence: string; stepSpeakerteam: string; stepPilotExpiringPrefix: string; stepPilotExpiringSuffix: string; stepStatsComing: string;
       listenersTitle: string; listenersComing: string;
     };
+    kontaktinfo: {
+      title: string; subtitle: string;
+      fieldArenanavn: string;
+      fieldKategori: string; kategoriPlaceholder: string;
+      fieldLand: string;
+      fieldKapasitet: string; kapasitetPlaceholder: string;
+      fieldOrgNummer: string;
+      contactHeading: string;
+      fieldFornavn: string; fieldEtternavn: string; fieldEpost: string; fieldTelefon: string;
+      saveButton: string; saving: string; saved: string;
+    };
     statistikk: {
       countSuffix: string; cancel: string; newEvent: string;
       fieldTitle: string; fieldTitlePlaceholder: string; fieldStart: string; fieldSlutt: string;
@@ -569,6 +580,25 @@ const no: {
       stepStatsComing: "Statistikk vises her så snart dere har hatt arrangementer",
       listenersTitle: "Lyttertall og engasjement",
       listenersComing: "Sanntids lyttertall og AI-basert toppengasjement-innsikt kommer her når streaming-integrasjonen er koblet på.",
+    },
+    kontaktinfo: {
+      title: "Arenainformasjon",
+      subtitle: "Samme opplysninger som ble registrert da dere meldte dere på — rett opp her om noe er feil eller endret seg.",
+      fieldArenanavn: "Arenanavn",
+      fieldKategori: "Kategori",
+      kategoriPlaceholder: "Velg kategori",
+      fieldLand: "Land",
+      fieldKapasitet: "Kapasitet",
+      kapasitetPlaceholder: "Velg kapasitet",
+      fieldOrgNummer: "Organisasjonsnummer",
+      contactHeading: "Kontaktperson",
+      fieldFornavn: "Fornavn",
+      fieldEtternavn: "Etternavn",
+      fieldEpost: "E-post",
+      fieldTelefon: "Telefon",
+      saveButton: "Lagre",
+      saving: "Lagrer…",
+      saved: "Lagret ✓",
     },
     statistikk: {
       countSuffix: "arrangementer",
