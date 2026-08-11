@@ -21,7 +21,7 @@ const en: Dictionary = {
     },
     intro: {
       heading: "What is Ådience?",
-      body: "Ådience is a live audio platform for sports and event venues and organizers, built by StoryPhone AS (org. no. 823773692, Hamar, Norway). Audiences physically present at the venue can listen to exclusive audio — commentary and other audio content — through their own headphones, with under 0.5 seconds of delay via geofencing technology. The service is offered to venue owners and organizers who want to give their audience a new listening experience.",
+      body: "Ådience is a live audio platform for sports and event venues and organizers, built by StoryPhone AS (org. no. 823773692, Hamar, Norway). Audiences physically present at the venue can listen to exclusive audio — commentary and other audio content — through their own headphones, with under 0.5 seconds of delay via geofencing technology. The service is global — any venue, anywhere in the world, can register and start using Ådience, provided there is network coverage on site.",
     },
     stats: {
       delay: { value: "0.5 sec", label: "Delay" },

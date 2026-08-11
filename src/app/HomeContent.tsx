@@ -160,13 +160,7 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
         </div>
       </section>
 
-      {/* ─── HVA ER ÅDIENCE (kort, faktabasert intro for lesere og AI-sammendrag) ───
-          MÅ FYLLES INN: geografisk dekningsområde — ikke bekreftet noe sted i
-          kodebasen eller på den live personvernsiden (https://www.adience.no/personvern)
-          utover at StoryPhone AS er registrert i Hamar, Norge. Registreringsskjemaet
-          (src/app/registrer/RegistrerPageContent.tsx, LAND-listen) antyder flere land
-          er aktuelle, så "Norge" er IKKE lagt til her uten bekreftelse. Legg til en
-          setning om dekningsområde i home.intro.body (no.ts/en.ts) når dette er avklart. */}
+      {/* ─── HVA ER ÅDIENCE (kort, faktabasert intro for lesere og AI-sammendrag) ─── */}
       <section aria-labelledby="hva-er-adience" style={{ padding: "0 24px 64px" }}>
         <div style={{ maxWidth: "900px", margin: "0 auto" }}>
           <h2 id="hva-er-adience" style={{

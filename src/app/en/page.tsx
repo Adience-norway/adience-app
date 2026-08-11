@@ -4,7 +4,7 @@ import { getDictionary } from "@/i18n/get-dictionary";
 
 export const metadata: Metadata = {
   title: "ÅDIENCE — Exclusive venue streaming",
-  description: "The exclusive audio channel for audiences physically present at the venue. A live audio platform from StoryPhone AS for sports and event venues and organizers.",
+  description: "The exclusive audio channel for audiences physically present at the venue. A live audio platform from StoryPhone AS for sports and event venues and organizers — a global service, available to any venue with network coverage.",
   alternates: {
     canonical: "/en",
     languages: { no: "/", en: "/en" },
@@ -34,6 +34,7 @@ const serviceJsonLd = {
     "@type": "BusinessAudience",
     audienceType: "Venue owners and organizers in sports and culture",
   },
+  areaServed: "Worldwide",
   url: "https://app.adience.no/en",
 };
 

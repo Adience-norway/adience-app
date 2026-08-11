@@ -220,7 +220,7 @@ const no: {
     },
     intro: {
       heading: "Hva er Ådience?",
-      body: "Ådience er en live-lydplattform for arenaer og arrangører innen idrett og kultur, utviklet av StoryPhone AS (org.nr. 823773692, Hamar). Publikum som er fysisk til stede på arenaen kan lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, med under 0,5 sekunders forsinkelse via geofencing-teknologi. Tjenesten tilbys til arenaeiere og arrangører som ønsker å gi sitt publikum en ny lytteopplevelse.",
+      body: "Ådience er en live-lydplattform for arenaer og arrangører innen idrett og kultur, utviklet av StoryPhone AS (org.nr. 823773692, Hamar). Publikum som er fysisk til stede på arenaen kan lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, med under 0,5 sekunders forsinkelse via geofencing-teknologi. Tjenesten er global — enhver arena, hvor som helst i verden, kan registrere seg og ta i bruk Ådience, forutsatt nettverksdekning på stedet.",
     },
     stats: {
       delay: { value: "0,5 sek", label: "Forsinkelse" },
