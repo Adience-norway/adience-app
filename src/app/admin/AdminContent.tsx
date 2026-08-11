@@ -2084,7 +2084,11 @@ function AddArenaModal({ onClose, onSaved, arena: editingArena, dict }: {
         .from("arenaer")
         .update({ ...payload, logo_url })
         .eq("id", editingArena!.id)
-        .select("*")
+        // ARENA_SELECT_COLUMNS, ikke select("*") — cast_passord er sperret
+        // for SELECT for authenticated/anon, og en select("*") etter update
+        // gjør at PostgREST avviser HELE spørringen med "permission denied
+        // for table arenaer" i stedet for å bare utelate den ene kolonnen.
+        .select(ARENA_SELECT_COLUMNS)
         .single();
 
       if (updateErr) {
