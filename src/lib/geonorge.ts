@@ -8,6 +8,8 @@
 // Representasjonspunktet er i EPSG:4258 (ETRS89) ≈ WGS84 — direkte brukbart i
 // Leaflet uten transformasjon.
 
+import { useRef, useState } from "react";
+
 const BASE = "https://ws.geonorge.no/adresser/v1/sok";
 
 export type AdresseForslag = {
@@ -89,4 +91,71 @@ export async function naermesteAdresse(lat: number, lng: number): Promise<Adress
   } catch {
     return null;
   }
+}
+
+// Delt mellom /admin (AddArenaModal) og /min-side (arena-eiers egen
+// adresseredigering) — samme debounce-/kappløps-håndtering trengs begge
+// steder, så den ligger her i stedet for å duplisere den skjøre async-logikken.
+export type GeoStatus = "idle" | "loading" | "found" | "not_found" | "error";
+
+export function useGeocoder() {
+  const [lat, setLat] = useState<number | null>(null);
+  const [lng, setLng] = useState<number | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [status, setStatus] = useState<GeoStatus>("idle");
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const requestIdRef = useRef(0);
+
+  // `land` is intentionally not part of the signature: Geonorge only indexes
+  // Norwegian addresses and its search breaks completely when a trailing
+  // country name is appended to the query (verified directly against the API:
+  // "Sangenveien 1 2317 Hamar" matches, but "...Hamar Norge" returns zero hits
+  // even with fuzzy=true). It's still saved to the arena record elsewhere —
+  // just never sent to the geocoder.
+  function schedule(gate: string, postnr: string, by: string) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    requestIdRef.current += 1;
+    const thisRequestId = requestIdRef.current;
+
+    const g = gate.trim(), p = postnr.trim(), b = by.trim();
+    // Require the street AND at least postnummer or by, or a real geocode
+    // fires on half-typed input and can match an unrelated exact house number
+    // elsewhere in the country.
+    if (!g || (!p && !b)) { setStatus("idle"); return; }
+    const parts = [g, p, b].filter(Boolean);
+
+    setStatus("loading");
+    timerRef.current = setTimeout(async () => {
+      try {
+        const treff = await sokAdresser(parts.join(" "), 1);
+        if (thisRequestId !== requestIdRef.current) return; // a newer query superseded this one
+        if (treff.length > 0) {
+          const a = treff[0];
+          setLat(a.lat);
+          setLng(a.lng);
+          setDisplayName([a.adressetekst, a.postnummer, a.poststed].filter(Boolean).join(" "));
+          setStatus("found");
+        } else {
+          setLat(null); setLng(null); setDisplayName(null);
+          setStatus("not_found");
+        }
+      } catch {
+        if (thisRequestId !== requestIdRef.current) return;
+        setStatus("error");
+      }
+    }, 800);
+  }
+
+  function setManual(newLat: number | null, newLng: number | null) {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setLat(newLat); setLng(newLng); setDisplayName(null);
+    setStatus(newLat != null && newLng != null ? "found" : "idle");
+  }
+
+  function reset() {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    setLat(null); setLng(null); setDisplayName(null); setStatus("idle");
+  }
+
+  return { lat, lng, displayName, status, schedule, setManual, reset };
 }

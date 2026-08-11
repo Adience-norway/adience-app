@@ -16,7 +16,7 @@ import {
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { geokodPoststed } from "@/lib/geonorge";
+import { geokodPoststed, useGeocoder } from "@/lib/geonorge";
 import type { Dictionary, Locale } from "@/i18n/get-dictionary";
 
 type MinSide = Dictionary["minSide"];
@@ -643,6 +643,110 @@ function StatistikkSection({
 /* ─── 3. GEOFENCE ─── */
 
 function GeofenceSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
+  return (
+    <>
+      <AdresseSection arena={arena} onSaved={onSaved} dict={dict} />
+      <GeofenceKartSection arena={arena} onSaved={onSaved} dict={dict} />
+    </>
+  );
+}
+
+// Arenaeiers egen redigering av gateadresse — fantes tidligere KUN i Admin.
+// Geokoder i bakgrunnen mens man skriver (samme mønster som AddArenaModal i
+// admin/AdminContent.tsx, delt via useGeocoder), men rører ALDRI lat/lng
+// automatisk her — kun adressetekstfeltene lagres. Å flytte selve kartnålen
+// er et bevisst separat steg (kart-seksjonen under / ManuellPosisjon), slik
+// at en upresis geokoding aldri kan endre en allerede riktig plassert nål
+// ved et uhell.
+function AdresseSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
+  const t = dict.minSide.geofence;
+  const [gate, setGate] = useState(arena.adresse_gate ?? arena.adresse ?? "");
+  const [postnummer, setPostnummer] = useState(arena.postnummer ?? "");
+  const [by, setBy] = useState(arena.by ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+  const geo = useGeocoder();
+
+  const harEndring =
+    gate !== (arena.adresse_gate ?? arena.adresse ?? "") ||
+    postnummer !== (arena.postnummer ?? "") ||
+    by !== (arena.by ?? "");
+
+  function handleChange(felt: "gate" | "postnummer" | "by", verdi: string) {
+    const nesteGate = felt === "gate" ? verdi : gate;
+    const nestePostnummer = felt === "postnummer" ? verdi : postnummer;
+    const nesteBy = felt === "by" ? verdi : by;
+    if (felt === "gate") setGate(verdi);
+    else if (felt === "postnummer") setPostnummer(verdi);
+    else setBy(verdi);
+    geo.schedule(nesteGate, nestePostnummer, nesteBy);
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    const { error } = await supabase
+      .from("arenaer")
+      .update({ adresse_gate: gate || null, postnummer: postnummer || null, by: by || null })
+      .eq("id", arena.id);
+    setSaving(false);
+    if (error) { setError(error.message); return; }
+    setSaved(true);
+    onSaved();
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <div style={cardStyle}>
+      <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.addressTitle}</h3>
+      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "16px" }}>
+        {t.addressSubtitle}
+      </p>
+      <label style={fieldLabelStyle}>{t.fieldGateadresse}</label>
+      <input
+        type="text"
+        value={gate}
+        onChange={(e) => handleChange("gate", e.target.value)}
+        placeholder={t.gateadressePlaceholder}
+        style={{ ...inputStyle, marginBottom: "16px" }}
+      />
+      <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
+        <div style={{ flex: "0 0 140px" }}>
+          <label style={fieldLabelStyle}>{t.fieldPostnummer}</label>
+          <input
+            type="text"
+            value={postnummer}
+            onChange={(e) => handleChange("postnummer", e.target.value)}
+            placeholder={t.postnummerPlaceholder}
+            style={inputStyle}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={fieldLabelStyle}>{t.fieldBy}</label>
+          <input
+            type="text"
+            value={by}
+            onChange={(e) => handleChange("by", e.target.value)}
+            placeholder={t.byPlaceholder}
+            style={inputStyle}
+          />
+        </div>
+      </div>
+      {geo.status === "loading" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{t.geoLoading}</p>}
+      {geo.status === "found" && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "8px" }}>✓ {t.geoFound}{geo.displayName ? `: ${geo.displayName}` : ""}</p>}
+      {geo.status === "not_found" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{t.geoNotFound}</p>}
+      {geo.status === "error" && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{t.geoError}</p>}
+      {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{error}</p>}
+      {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "8px" }}>{t.addressSaved}</p>}
+      <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
+        {saving ? t.saving : t.saveAddressButton}
+      </button>
+    </div>
+  );
+}
+
+function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
   const t = dict.minSide.geofence;
   const [localRadius, setLocalRadius] = useState(arena.geofence_radius ?? 300);
   const [pendingLat, setPendingLat] = useState<number | null>(null);

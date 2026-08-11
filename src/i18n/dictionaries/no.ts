@@ -138,6 +138,12 @@ const no: {
       manualTitle: string; manualSubtitlePrefix: string; manualSubtitleSuffix: string; manualCta: string;
       findingLocation: string; clickHint: string; placeInMapHint: string; savePosition: string;
       polygonManagedByAdience: string;
+      addressTitle: string; addressSubtitle: string;
+      fieldGateadresse: string; gateadressePlaceholder: string;
+      fieldPostnummer: string; postnummerPlaceholder: string;
+      fieldBy: string; byPlaceholder: string;
+      geoLoading: string; geoFound: string; geoNotFound: string; geoError: string;
+      saveAddressButton: string; addressSaved: string;
     };
     speakerteam: {
       countSuffix: string; cancel: string; addSpeaker: string;
@@ -606,6 +612,20 @@ const no: {
       placeInMapHint: "Klikk i kartet for å plassere arenaen.",
       savePosition: "Lagre posisjon",
       polygonManagedByAdience: "Dette dekningsområdet er tegnet inn av Ådience som en del av årsabonnementet ditt. Ta kontakt med oss hvis noe skal justeres.",
+      addressTitle: "Adresse",
+      addressSubtitle: "Gateadressen vises til publikum i appen og brukes til å beregne avstand til arenaen.",
+      fieldGateadresse: "Gateadresse",
+      gateadressePlaceholder: "f.eks. Snarøyveien 30",
+      fieldPostnummer: "Postnummer",
+      postnummerPlaceholder: "0001",
+      fieldBy: "By",
+      byPlaceholder: "Oslo",
+      geoLoading: "Søker etter adresse…",
+      geoFound: "Adresse funnet",
+      geoNotFound: "Ingen treff på adressen — du kan likevel lagre teksten som skrevet.",
+      geoError: "Geokoding feilet.",
+      saveAddressButton: "Lagre adresse",
+      addressSaved: "Adresse lagret ✓",
     },
     speakerteam: {
       countSuffix: "medlemmer",
