@@ -249,7 +249,7 @@ const no: {
       steps: [
         { step: "01", title: "Last ned appen", desc: "Tilgjengelig på App Store og Google Play. Gratis å laste ned." },
         { step: "02", title: "Ankom arenaen", desc: "Appen registrerer automatisk at du er innenfor geofencen." },
-        { step: "03", title: "Lyt eksklusivt", desc: "Koble til med egne hodetelefoner og nyt ekspertkommentarer." },
+        { step: "03", title: "Lytt eksklusivt", desc: "Koble til med egne hodetelefoner og nyt ekspertkommentarer." },
       ],
     },
     download: {
