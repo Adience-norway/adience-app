@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>&Aring;dience Cast</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <!-- Internal broadcast tool (legacy static build, superseded by /cast) — must never be indexed. -->
+  <meta name="robots" content="noindex, nofollow" />
+  <!-- Montserrat -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --deep-teal:#004D5C;   /* bg */
+      --bright-teal:#1488A6; /* accents (idle button) */
+      --alert-red:#C62828;   /* live button */
+      --white:#fff;
+      --card:#0a2f37;
+      --card-border:#0f3e49;
+      --seg-bg:#083942;
+      --seg-border:#0f3e49;
+      --seg-text:#d9fbff;
+      --muted:#cde7ec99;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;padding:20px;
+      font-family:Montserrat,system-ui,-apple-system,Segoe UI,Roboto,Arial;
+      color:var(--white); background:var(--deep-teal);
+      display:flex; justify-content:center;
+    }
+    .wrap{width:min(980px,100%)}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+    header img{width:64px;height:64px;object-fit:contain}
+    h1{margin:0;font-size:22px;font-weight:700}
+
+    .card{background:var(--card);border:1px solid var(--card-border);border-radius:14px;padding:16px}
+    label{display:block;margin:8px 0 6px;font-weight:600}
+
+    input[type="text"], select{
+      width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--card-border);
+      background:#07343d;color:var(--white);outline:none;font-size:14px
+    }
+    input::placeholder{color:var(--muted)}
+
+    /* 3-column responsive row: ID / Device / EQ */
+    .grid3{
+      display:grid; gap:10px;
+      grid-template-columns:1fr; /* mobile default */
+    }
+    @media (min-width: 900px){
+      .grid3{ grid-template-columns:1fr 1fr 1fr; align-items:end; }
+    }
+
+    /* Device selector with compact refresh icon */
+    .device-row{display:grid;grid-template-columns:1fr auto; gap:6px; align-items:center}
+    .icon-btn{
+      display:inline-flex; align-items:center; justify-content:center;
+      width:32px; height:32px; border-radius:8px; background:#0c3a44; border:1px solid var(--card-border);
+      cursor:pointer; transition:filter .15s ease;
+    }
+    .icon-btn:hover{filter:brightness(1.08)}
+    .icon-btn svg{width:14px;height:14px; color:#cfeff6}
+
+    /* Segmented EQ control (compact) */
+    .segmented{
+      position:relative;
+      display:grid;
+      grid-template-columns:1fr 1fr 1fr;
+      background:var(--seg-bg);
+      border:1px solid var(--seg-border);
+      border-radius:999px;
+      padding:2px; gap:2px;
+      user-select:none;
+      margin-top:0;
+    }
+    .segmented input[type="radio"]{position:absolute; inset:0; opacity:0; pointer-events:none}
+    .segmented label{
+      display:flex; align-items:center; justify-content:center; gap:5px;
+      padding:6px 8px; border-radius:999px;
+      color:var(--seg-text);
+      cursor:pointer; position:relative; z-index:2;
+      font-weight:600; letter-spacing:.2px; font-size:13px; line-height:1;
+    }
+    .segmented label svg{width:14px; height:14px}
+    .segmented .seg-thumb{
+      position:absolute; z-index:1; inset:2px auto 2px 2px;
+      width:calc((100% - 4px)/3); border-radius:999px;
+      background:var(--bright-teal); box-shadow:0 2px 0 rgba(0,0,0,.12);
+      transition:left .22s ease, transform .22s ease;
+    }
+    #presetPlain:checked  ~ .seg-thumb{ left:2px; }
+    #presetVoice:checked  ~ .seg-thumb{ left:calc(2px + (100% - 4px)/3); }
+    #presetMusic:checked  ~ .seg-thumb{ left:calc(2px + 2*((100% - 4px)/3)); }
+    #presetPlain:checked  + label,
+    #presetVoice:checked  + label + input + label,
+    #presetMusic:checked  + label{ color:var(--white); }
+    .segmented:focus-within{ outline:3px solid color-mix(in oklab, var(--bright-teal) 40%, transparent); outline-offset:3px; border-radius:18px }
+
+    /* Meter */
+    canvas{width:100%;height:26px;background:#112e34;border-radius:8px;border:1px solid var(--card-border); margin-top:10px}
+
+    /* Publish button: big & centered + live dot */
+    .cta{
+      display:flex; justify-content:center; margin-top:14px;
+    }
+    .btn-primary{
+      background:var(--bright-teal); color:var(--white);
+      appearance:none; border:0; border-radius:999px; padding:14px 28px;
+      font-weight:700; cursor:pointer; font-size:16px; letter-spacing:.2px;
+      display:inline-flex; align-items:center; gap:10px;
+      transition:background .2s ease;
+    }
+    .btn-primary:disabled{opacity:.6; cursor:not-allowed}
+    .btn-live{ background:var(--alert-red) !important; }
+
+    .live-dot{
+      display:none; width:10px; height:10px; border-radius:50%; background:var(--white);
+      box-shadow:0 0 0 0 rgba(255,255,255,0.8);
+      animation:pulse 1.2s ease-in-out infinite;
+    }
+    .btn-live .live-dot{ display:inline-block; }
+    @keyframes pulse{
+      0%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,0.8); }
+      70%{ transform:scale(1.15); box-shadow:0 0 0 8px rgba(255,255,255,0); }
+      100%{ transform:scale(1); box-shadow:0 0 0 0 rgba(255,255,255,0); }
+    }
+
+    /* Log area (hidden by default) */
+    .log-wrap{margin-top:12px}
+    #log{display:none; max-height:220px; overflow-y:auto;background:#082f36;border:1px solid var(--card-border);
+      border-radius:12px;padding:10px;font-family:ui-monospace,Menlo,Consolas,monospace;color:#e7fbff;font-size:13px;line-height:1.45}
+    #log .line{padding:2px 0;border-bottom:1px dashed rgba(207,239,246,.25)}
+    .log-toggle{
+      margin-top:8px; display:inline-flex; gap:6px; align-items:center;
+      background:none; border:none; color:#cfeff6; text-decoration:underline; cursor:pointer;
+      padding:4px 0; font-size:13px; font-weight:600;
+    }
+    .log-toggle:focus{outline:3px solid color-mix(in oklab, var(--bright-teal) 40%, transparent); outline-offset:3px; border-radius:6px}
+    .log-toggle svg{width:14px;height:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="./audience-logo.png" alt="&Aring;dience logo" onerror="this.style.display='none'">
+      <h1>&Aring;dience cast</h1>
+    </header>
+
+    <div class="card">
+      <!-- 3-column row -->
+      <div class="grid3">
+        <!-- Column 1: Stream ID -->
+        <div>
+          <label for="streamId">Stream ID</label>
+          <input id="streamId" type="text" placeholder="your-stream-id" />
+        </div>
+
+        <!-- Column 2: Device -->
+        <div>
+          <label for="deviceSel">Audio Input</label>
+          <div class="device-row">
+            <select id="deviceSel"></select>
+            <button class="icon-btn" id="btnRefresh" title="Refresh devices" aria-label="Refresh devices">
+              <!-- refresh icon -->
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 3: EQ segmented -->
+        <div>
+          <label>EQ Preset</label>
+          <div class="segmented" id="presetWrap" role="tablist" aria-label="EQ preset" tabindex="0">
+            <input type="radio" id="presetPlain"  name="preset" value="plain" />
+            <label for="presetPlain"  role="tab" aria-controls="vu" title="Flat (no EQ)">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              <span>Plain</span>
+            </label>
+
+            <input type="radio" id="presetVoice"  name="preset" value="voice" checked />
+            <label for="presetVoice"  role="tab" aria-controls="vu" title="Voice: low-cut + presence boost">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a3 3 0 0 1 3 3v6a3 3 0 1 1-6 0V6a3 3 0 0 1 3-3zm-7 9a7 7 0 0 0 14 0m-7 7v2" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"/></svg>
+              <span>Voice</span>
+            </label>
+
+            <input type="radio" id="presetMusic"  name="preset" value="music" />
+            <label for="presetMusic" role="tab" aria-controls="vu" title="Music: gentle bass/air lift">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 17.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zm7-14v10.5a2.5 2.5 0 1 0 2 2.415V5.5L22 4.8V2.5L16 3.5z" fill="currentColor"/></svg>
+              <span>Music</span>
+            </label>
+
+            <div class="seg-thumb" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Meters -->
+      <label style="margin-top:10px">Outgoing level</label>
+      <canvas id="vu" width="900" height="26"></canvas>
+      <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <label style="margin:0;white-space:nowrap">Limiter reduction</label>
+        <span id="grDb" style="font-size:12px;color:var(--muted);min-width:52px;text-align:right">0.0 dB</span>
+      </div>
+      <canvas id="gr" width="900" height="26"></canvas>
+
+      <!-- Big centered CTA -->
+      <div class="cta">
+        <button id="btnPublish" class="btn-primary" aria-pressed="false">
+          <span class="live-dot" aria-hidden="true"></span>
+          <span class="btn-label">Start sending</span>
+        </button>
+      </div>
+
+      <!-- Log (hidden by default) + toggle -->
+      <div class="log-wrap">
+        <div id="log"></div>
+        <button id="logToggle" class="log-toggle" aria-expanded="false" aria-controls="log">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 5v14m-7-7h14"/>
+          </svg>
+          <span>Show log</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Helpful shim -->
+  <script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+
+  <!-- App logic (lazy-load Ant SDK so device list always renders) -->
+  <script type="module">
+    const websocketURL = "wss://cast.adience.no:5443/WebRTCAppEE/websocket";
+
+    // ---- UI helpers ----
+    const $ = id => document.getElementById(id);
+    const logBox = $("log");
+
+    // Keep logs closed by default; errors auto-open the log panel
+    function addLog(message){
+      const ts = new Date().toISOString().split("T")[1].split(".")[0]; // hh:mm:ss
+      const line = document.createElement("div");
+      line.className = "line";
+      line.textContent = `[${ts}] ${message}`;
+      logBox.appendChild(line);
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+    function addError(message){
+      addLog(message);
+      setLogVisible(true);
+    }
+    function setLogVisible(show){
+      logBox.style.display = show ? "block" : "none";
+      const btn = $("logToggle");
+      btn.setAttribute("aria-expanded", show ? "true" : "false");
+      btn.querySelector("span").textContent = show ? "Hide log" : "Show log";
+      btn.querySelector("path").setAttribute("d", show ? "M5 12h14" : "M12 5v14m-7-7h14"); // + ? 
+    }
+    $("logToggle").addEventListener("click", () => {
+      const visible = logBox.style.display === "block";
+      setLogVisible(!visible);
+    });
+    setLogVisible(false); // start closed
+
+    const currentPreset = () => (document.querySelector('input[name="preset"]:checked')?.value || "voice");
+
+    // ---- Audio graph state ----
+    let audioCtx = null;
+    let micStream = null;           // raw GUM
+    let sourceNode = null;          // MediaStreamSource
+    let monoGain = null;            // GainNode — forces signal to 1 channel immediately after source
+    let eqFilters = [];             // BiquadFilterNode[]
+    let limiter = null;             // DynamicsCompressorNode (tone-shaping)
+    let outputLimiter = null;       // DynamicsCompressorNode (safety hard limiter, post-EQ)
+    let stereoMerger = null;        // ChannelMergerNode — duplicates mono to L+R before WebRTC
+    let preAnalyser = null;         // AnalyserNode tapped PRE-outputLimiter (shows raw overshoot)
+    let analyser = null;            // AnalyserNode tapped POST-outputLimiter (kept for future use)
+    let dest = null;                // MediaStreamDestination (published)
+    let rafId = null;
+
+    // ---- Ant Media SDK (lazy) ----
+    let WebRTCAdaptorClass = null;  // holds the class after dynamic import
+    let webRTCAdaptor = null;
+    let initialized = false;
+    let publishing = false;
+    let currentStreamId = "";
+
+    async function lazyLoadAntSDK(){
+      if (WebRTCAdaptorClass) return WebRTCAdaptorClass;
+      // Dynamic import: avoids blocking the module on load if CDN/ESM has issues
+      const mod = await import("https://cdn.jsdelivr.net/npm/@antmedia/webrtc_adaptor@2.15.0/src/main/js/webrtc_adaptor.js");
+      WebRTCAdaptorClass = mod.WebRTCAdaptor;
+      return WebRTCAdaptorClass;
+    }
+
+    // Enumerate devices (asks for mic once so labels are visible)
+    async function refreshDevices() {
+      try {
+        // Requesting permission once helps reveal labels and enumerate reliably
+        if (!micStream && !audioCtx) {
+          const tmp = await navigator.mediaDevices.getUserMedia({
+            audio: { echoCancellation:false, noiseSuppression:false, autoGainControl:false }
+          });
+          tmp.getTracks().forEach(t => t.stop());
+        }
+      } catch (e) {
+        addError("Mic permission denied or failed. Please allow the microphone (HTTPS or localhost required).");
+      }
+
+      if (!navigator.mediaDevices?.enumerateDevices) {
+        addLog("enumerateDevices() not supported in this browser.");
+        return;
+      }
+
+      try {
+        const devs = await navigator.mediaDevices.enumerateDevices();
+        const inputs = devs.filter(d => d.kind === "audioinput");
+        const sel = $("deviceSel");
+        const prev = sel.value;
+        sel.innerHTML = "";
+        inputs.forEach((d,i) => {
+          const opt = document.createElement("option");
+          opt.value = d.deviceId || "";
+          opt.textContent = d.label || `Microphone ${i+1}`;
+          sel.appendChild(opt);
+        });
+        if (inputs.length === 0) addError("No audio input devices found.");
+        if ([...sel.options].some(o => o.value === prev)) sel.value = prev;
+      } catch (err) {
+        addError("Failed to enumerate devices: " + (err?.message || err));
+      }
+    }
+
+    // Build EQ filters for a preset
+    function buildEQ(ctx, preset) {
+      if (preset === "voice")  return makePeaking(ctx, [[100,-2],[300,-2],[3000,3],[8000,-2]]);
+      if (preset === "music")  return makePeaking(ctx, [[60,3],[250,0],[1000,0],[5000,0],[12000,3]]);
+      return []; // plain (bypass)
+    }
+    function makePeaking(ctx, pairs) {
+      return pairs.map(([f,g]) => {
+        const b = ctx.createBiquadFilter();
+        b.type = "peaking"; b.frequency.value = f; b.Q.value = 1.0; b.gain.value = g; return b;
+      });
+    }
+
+    function wireGraph() {
+      try { sourceNode?.disconnect(); } catch {}
+      try { monoGain?.disconnect(); } catch {}
+      eqFilters.forEach(f => { try { f.disconnect(); } catch {} });
+      try { limiter?.disconnect(); } catch {}
+      try { preAnalyser?.disconnect(); } catch {}
+      try { outputLimiter?.disconnect(); } catch {}
+      try { stereoMerger?.disconnect(); } catch {}
+      if (!sourceNode || !monoGain || !limiter || !preAnalyser || !outputLimiter || !stereoMerger) return;
+      // source → mono collapse → EQ → tone limiter → pre-tap → output limiter → stereo L+R → dest
+      sourceNode.connect(monoGain);
+      if (eqFilters.length) {
+        monoGain.connect(eqFilters[0]);
+        for (let i=0;i<eqFilters.length-1;i++) eqFilters[i].connect(eqFilters[i+1]);
+        eqFilters[eqFilters.length-1].connect(limiter);
+      } else {
+        monoGain.connect(limiter);
+      }
+      limiter.connect(preAnalyser);
+      preAnalyser.connect(outputLimiter);
+      // Duplicate mono to both stereo channels so listeners hear centered audio
+      outputLimiter.connect(stereoMerger, 0, 0); // → left
+      outputLimiter.connect(stereoMerger, 0, 1); // → right
+      try { stereoMerger.connect(dest); } catch {}
+    }
+
+    async function setupProcessedAudio(deviceId, preset) {
+      // ensure meter is not running before we publish
+      stopMeter();
+      if (audioCtx) { try { audioCtx.close(); } catch {} }
+      if (micStream) { try { micStream.getTracks().forEach(t=>t.stop()); } catch {} }
+
+      micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          deviceId: deviceId ? { exact: deviceId } : undefined,
+          echoCancellation:false, noiseSuppression:false, autoGainControl:false
+        }
+      });
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      sourceNode = audioCtx.createMediaStreamSource(micStream);
+
+      // Force mono immediately — collapses any stereo mic input to a single channel.
+      // Every downstream node (EQ, limiters) processes 1 channel, never 2.
+      monoGain = audioCtx.createGain();
+      monoGain.channelCount = 1;
+      monoGain.channelCountMode = "explicit";
+      monoGain.channelInterpretation = "speakers";
+
+      // Stereo merger at the very end: duplicates mono to L+R so playback is centered.
+      stereoMerger = audioCtx.createChannelMerger(2);
+
+      limiter = audioCtx.createDynamicsCompressor();
+      limiter.threshold.value = -6; // headroom
+      limiter.knee.value = 0; limiter.ratio.value = 20;
+      limiter.attack.value = 0.001; limiter.release.value = 0.05;
+
+      outputLimiter = audioCtx.createDynamicsCompressor();
+      outputLimiter.threshold.value = -1; // catch peaks before clipping
+      outputLimiter.knee.value = 0;       // hard knee
+      outputLimiter.ratio.value = 20;     // hard limiter behaviour
+      outputLimiter.attack.value = 0.003; // 3ms — fast enough for sudden peaks
+      outputLimiter.release.value = 0.15; // 150ms — recover without pumping
+
+      eqFilters = buildEQ(audioCtx, preset);
+
+      preAnalyser = audioCtx.createAnalyser();
+      preAnalyser.fftSize = 256;
+
+      analyser = audioCtx.createAnalyser(); // kept in state; not used in draw loop
+      analyser.fftSize = 256;
+
+      dest = audioCtx.createMediaStreamDestination();
+
+      wireGraph();
+      // DO NOT start meter yet; only start when actually publishing
+      return dest.stream;
+    }
+
+    function startMeter() {
+      if (!preAnalyser) return;
+      const vuCanvas = $("vu"); const vuCtx = vuCanvas.getContext("2d");
+      const grCanvas = $("gr"); const grCtx = grCanvas.getContext("2d");
+      const grDbEl  = $("grDb");
+      const preData = new Uint8Array(preAnalyser.fftSize);
+      const GR_RANGE = 24; // -24 dB = full GR bar
+      // VU scale: -40 dBFS (silence) → +12 dBFS (overshoot headroom), range = 52 dB
+      const VU_MIN_DB = -40;
+      const VU_MAX_DB = 12;
+      const VU_RANGE  = VU_MAX_DB - VU_MIN_DB; // 52
+      const dbToPos = db => (db - VU_MIN_DB) / VU_RANGE;
+      const LIMITER_DB  = -1;               // must match outputLimiter.threshold
+      const LIMITER_POS = dbToPos(LIMITER_DB); // ≈ 0.750 — where red zone starts
+      const WARN_DB     = LIMITER_DB - 8;      // 8 dB warning zone before limiter (-9 dBFS)
+      const VU_MARKS = [
+        { db: -6, label: '-6' }, { db: -3, label: '-3' },
+        { db:  0, label:  '0' }, { db: +3, label: '+3' }, { db: +6, label: '+6' },
+      ];
+      // Smoothed display values — fast attack, slow release
+      let smoothVu = 0;
+      let smoothGr = 0;
+      const draw = () => {
+        rafId = requestAnimationFrame(draw);
+        // — Outgoing level (VU) — pre-limiter tap, extended dBFS scale —
+        preAnalyser.getByteTimeDomainData(preData);
+        let sum=0; for (let i=0;i<preData.length;i++){ const v=(preData[i]-128)/128; sum+=v*v; }
+        const rms = Math.sqrt(sum/preData.length);
+        const dbfs = rms > 0 ? 20 * Math.log10(rms) : -90;
+        const rawVu = Math.min(1, Math.max(0, dbToPos(dbfs)));
+        smoothVu = rawVu > smoothVu
+          ? rawVu * 0.8 + smoothVu * 0.2          // fast attack
+          : rawVu * 0.05 + smoothVu * 0.95;        // slow release
+        vuCtx.clearRect(0,0,vuCanvas.width,vuCanvas.height);
+        // Normal zone: teal up to -9 dBFS
+        // Warning zone: yellow from -9 to 0 dBFS
+        // Overshoot zone: red above 0 dBFS (pre-limiter signal exceeding digital full scale)
+        const fillW = vuCanvas.width * smoothVu;
+        const limX = vuCanvas.width * LIMITER_POS;
+        const warnX = vuCanvas.width * dbToPos(WARN_DB);
+        if (smoothVu > LIMITER_POS) {
+          // Teal → yellow up to limiter threshold, then striped red overshoot
+          vuCtx.fillStyle = "#6ff3ff"; vuCtx.fillRect(0, 0, warnX, vuCanvas.height);
+          vuCtx.fillStyle = "#eab308"; vuCtx.fillRect(warnX, 0, limX - warnX, vuCanvas.height);
+          vuCtx.fillStyle = "#ef4444"; vuCtx.fillRect(limX, 0, fillW - limX, vuCanvas.height);
+          vuCtx.save();
+          vuCtx.globalAlpha = 0.25;
+          vuCtx.fillStyle = "#000";
+          const stripeW = 4;
+          for (let sx = limX; sx < fillW; sx += stripeW * 2)
+            vuCtx.fillRect(sx, 0, stripeW, vuCanvas.height);
+          vuCtx.restore();
+        } else if (smoothVu > dbToPos(WARN_DB)) {
+          vuCtx.fillStyle = "#6ff3ff"; vuCtx.fillRect(0, 0, warnX, vuCanvas.height);
+          vuCtx.fillStyle = "#eab308"; vuCtx.fillRect(warnX, 0, fillW - warnX, vuCanvas.height);
+        } else {
+          vuCtx.fillStyle = "#6ff3ff"; vuCtx.fillRect(0, 0, fillW, vuCanvas.height);
+        }
+        // — Scale markers: -6, -3, 0, +3, +6 dBFS —
+        vuCtx.save();
+        vuCtx.strokeStyle = "rgba(255,255,255,0.35)";
+        vuCtx.fillStyle   = "rgba(255,255,255,0.6)";
+        vuCtx.font        = "8px Montserrat,system-ui,sans-serif";
+        vuCtx.lineWidth   = 1;
+        for (const m of VU_MARKS) {
+          const x = Math.round(vuCanvas.width * dbToPos(m.db));
+          vuCtx.beginPath(); vuCtx.moveTo(x, 0); vuCtx.lineTo(x, vuCanvas.height); vuCtx.stroke();
+          vuCtx.textAlign = m.db === 6 ? "right" : "center";
+          vuCtx.fillText(m.label, m.db === 6 ? x - 2 : x, vuCanvas.height - 3);
+        }
+        vuCtx.restore();
+        // — Limiter gain reduction (fills RIGHT → LEFT) with smoothing —
+        const rawGr = Math.min(1, Math.abs(outputLimiter ? outputLimiter.reduction : 0) / GR_RANGE);
+        smoothGr = rawGr > smoothGr
+          ? rawGr  * 0.9 + smoothGr * 0.1          // fast attack
+          : rawGr  * 0.05 + smoothGr * 0.95;        // slow release
+        const grW = grCanvas.width * smoothGr;
+        grCtx.clearRect(0,0,grCanvas.width,grCanvas.height);
+        grCtx.fillStyle = smoothGr > 0.5 ? "#a855f7"   // bright purple — heavy limiting
+                        : smoothGr > 0.2 ? "#7c3aed"   // mid purple
+                        :                  "#6366f1";   // indigo — light touch
+        grCtx.fillRect(grCanvas.width - grW, 0, grW, grCanvas.height); // anchored to right edge
+        const grDb = outputLimiter ? outputLimiter.reduction : 0;
+        grDbEl.textContent = grDb.toFixed(1) + " dB";
+      }; draw();
+    }
+    function clearMeterCanvas(){
+      const vuCtx = $("vu").getContext("2d"); vuCtx.clearRect(0,0,$("vu").width,$("vu").height);
+      const grCtx = $("gr").getContext("2d"); grCtx.clearRect(0,0,$("gr").width,$("gr").height);
+      $("grDb").textContent = "0.0 dB";
+    }
+    function stopMeter(){
+      if (rafId) cancelAnimationFrame(rafId), rafId=null;
+      clearMeterCanvas();
+    }
+
+    async function ensureSDKWithStream(stream) {
+      if (!WebRTCAdaptorClass) await lazyLoadAntSDK();
+      if (webRTCAdaptor) return;
+      await new Promise((resolve,reject)=>{
+        webRTCAdaptor = new WebRTCAdaptorClass({
+          websocket_url: websocketURL,
+          localStream: stream,          // our processed audio
+          debug: false,
+          sdp_constraints: { OfferToReceiveAudio:false, OfferToReceiveVideo:false },
+          callback: (info,obj) => {
+            switch(info){
+              case "initialized":
+                initialized = true; addLog("SDK initialized"); resolve(); break;
+              case "publish_started":
+                publishing = true;
+                updatePublishBtn();
+                startMeter();                // START VU when live
+                addLog("Publishing started");
+                break;
+              case "publish_finished":
+                publishing = false;
+                updatePublishBtn();
+                stopMeter();                 // STOP VU when finished
+                addLog("Publishing finished");
+                break;
+            }
+          },
+          callbackError: (err,msg) => {
+            const details = msg || err?.message || JSON.stringify(err||{},null,2);
+            addError("Error: " + details);
+            if (!initialized) reject(err||new Error(details));
+          }
+        });
+      });
+    }
+
+    function updatePublishBtn(){
+      const btn = $("btnPublish");
+      const label = btn.querySelector(".btn-label");
+      btn.classList.toggle("btn-live", publishing);
+      btn.setAttribute("aria-pressed", publishing ? "true" : "false");
+      label.textContent = publishing ? "Stop sending" : "Start sending";
+      // live-dot visibility handled by CSS via .btn-live
+    }
+
+    async function startPublish() {
+      const streamId = $("streamId").value.trim();
+      const devId = $("deviceSel").value;
+      if (!streamId){ addError("Please enter a Stream ID."); return; }
+
+      const processed = await setupProcessedAudio(devId, currentPreset());
+
+      await ensureSDKWithStream(processed);
+      if (audioCtx.state === "suspended") { try { await audioCtx.resume(); } catch {} }
+
+      currentStreamId = streamId;
+      webRTCAdaptor.publish(streamId);
+      updatePublishBtn();
+      addLog("Publishing...");
+    }
+
+    function stopPublish() {
+      if (webRTCAdaptor && publishing) {
+        webRTCAdaptor.stop(currentStreamId);
+        // be responsive: stop meter right away; callback will also stop/confirm
+        stopMeter();
+        publishing = false;
+        updatePublishBtn();
+        addLog("Stopping...");
+      }
+    }
+
+    // Single toggle button
+    $("btnPublish").addEventListener("click", async () => {
+      if (publishing) stopPublish();
+      else await startPublish();
+    });
+
+    // Device change: rebuild audio; if currently publishing, quick restart
+    $("deviceSel").addEventListener("change", async () => {
+      const wasPublishing = publishing;
+      const devId = $("deviceSel").value;
+      if (wasPublishing) stopPublish();
+      await setupProcessedAudio(devId, currentPreset());
+      if (wasPublishing && currentStreamId) {
+        setTimeout(()=>{ startPublish(); }, 300);
+      }
+    });
+
+    // Live EQ switching
+    $("presetWrap").addEventListener("change", () => {
+      if (!audioCtx || !sourceNode || !limiter) return;
+      eqFilters = buildEQ(audioCtx, currentPreset());
+      wireGraph();
+    });
+
+    // Keyboard arrows cycle presets
+    $("presetWrap").addEventListener("keydown", (e) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const ids = ['presetPlain','presetVoice','presetMusic'];
+      const current = document.querySelector('input[name="preset"]:checked');
+      let i = ids.indexOf(current.id);
+      i = e.key === 'ArrowRight' ? (i+1)%ids.length : (i-1+ids.length)%ids.length;
+      const next = document.getElementById(ids[i]);
+      next.checked = true;
+      next.dispatchEvent(new Event('change',{bubbles:true}));
+      e.preventDefault();
+    });
+
+    // Refresh icon
+    $("btnRefresh").addEventListener("click", refreshDevices);
+
+    // Initial device population on load (log stays hidden)
+    refreshDevices();
+
+    // Cleanup
+    window.addEventListener("beforeunload", () => {
+      try { if (publishing) stopPublish(); } catch {}
+      try { stopMeter(); } catch {}
+      try { if (audioCtx) audioCtx.close(); } catch {}
+      try { micStream?.getTracks().forEach(t=>t.stop()); } catch {}
+    });
+  </script>
+</body>
+</html>
