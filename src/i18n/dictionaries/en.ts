@@ -62,7 +62,11 @@ const en: Dictionary = {
     footer: {
       tagline: "The exclusive audio channel for audiences physically present at the venue.",
       copyright: "© 2025 Ådience AS. All rights reserved.",
-      links: ["Privacy", "Terms", "Cookies"],
+      links: [
+        { label: "Privacy", href: "https://www.adience.no/personvern" },
+        { label: "Terms", href: "#" },
+        { label: "Cookies", href: "#" },
+      ],
     },
   },
   demo: {

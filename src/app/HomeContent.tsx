@@ -400,8 +400,8 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
             </span>
             <div style={{ display: "flex", gap: "24px" }}>
               {t.footer.links.map(link => (
-                <a key={link} href="#" style={{ color: "rgba(255,255,255,0.25)", fontSize: "13px", textDecoration: "none" }}>
-                  {link}
+                <a key={link.label} href={link.href} style={{ color: "rgba(255,255,255,0.25)", fontSize: "13px", textDecoration: "none" }}>
+                  {link.label}
                 </a>
               ))}
             </div>

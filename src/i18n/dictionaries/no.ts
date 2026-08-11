@@ -18,7 +18,7 @@ const no: {
       steps: { step: string; title: string; desc: string }[];
     };
     download: { eyebrow: string; title: string; subtitle: string; requirement: string };
-    footer: { tagline: string; copyright: string; links: string[] };
+    footer: { tagline: string; copyright: string; links: { label: string; href: string }[] };
   };
   demo: {
     metaTitle: string; metaDescription: string;
@@ -261,7 +261,14 @@ const no: {
     footer: {
       tagline: "Den eksklusive lydkanalen for publikum som er fysisk til stede i arenaen.",
       copyright: "© 2025 Ådience AS. Alle rettigheter forbeholdt.",
-      links: ["Personvern", "Vilkår", "Cookies"],
+      links: [
+        { label: "Personvern", href: "https://www.adience.no/personvern" },
+        // MÅ FYLLES INN: ekte URL for vilkår og cookies — ingen slik side
+        // finnes ennå på www.adience.no (sjekket mot Wix sitt eget
+        // pages-sitemap.xml 2026-07-31), så disse peker fortsatt på "#".
+        { label: "Vilkår", href: "#" },
+        { label: "Cookies", href: "#" },
+      ],
     },
   },
   demo: {
