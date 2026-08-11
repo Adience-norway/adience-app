@@ -112,7 +112,7 @@ const no: {
       blog: string; logout: string; backToAdmin: string;
       adminBannerPrefix: string; adminBannerSuffix: string;
     };
-    tabs: Record<"oversikt" | "statistikk" | "geofence" | "speakerteam" | "kurs" | "sertifikater" | "media" | "abonnement", string>;
+    tabs: Record<"oversikt" | "arenainfo" | "statistikk" | "geofence" | "speakerteam" | "kurs" | "sertifikater" | "media" | "abonnement", string>;
     noArena: { message: string; logout: string };
     myPageLabel: string;
     oversikt: {
@@ -551,6 +551,7 @@ const no: {
     },
     tabs: {
       oversikt: "Oversikt",
+      arenainfo: "Arenainfo",
       statistikk: "Statistikk",
       geofence: "Geofence",
       speakerteam: "Speakerteam",

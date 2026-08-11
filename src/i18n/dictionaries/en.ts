@@ -332,6 +332,7 @@ const en: Dictionary = {
     },
     tabs: {
       oversikt: "Overview",
+      arenainfo: "Venue info",
       statistikk: "Statistics",
       geofence: "Geofence",
       speakerteam: "Speaker team",

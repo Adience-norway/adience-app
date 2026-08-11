@@ -46,9 +46,9 @@ function PolygonGeofenceMap({ lat, lng, initialPoints }: { lat: number; lng: num
   return <GeofenceMap lat={lat} lng={lng} initialPoints={initialPoints} onChange={() => {}} />;
 }
 
-type Tab = "oversikt" | "speakerteam" | "statistikk" | "media";
+type Tab = "oversikt" | "arenainfo" | "speakerteam" | "statistikk" | "media";
 
-const TAB_IDS: Tab[] = ["oversikt", "speakerteam", "statistikk", "media"];
+const TAB_IDS: Tab[] = ["oversikt", "arenainfo", "speakerteam", "statistikk", "media"];
 
 // Samme lister som registrer/RegistrerPageContent.tsx sitt registreringsskjema
 // bruker — må holdes i sync manuelt (ingen delt konstant-fil i denne
@@ -391,6 +391,9 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
         {tab === "oversikt" && arena && (
           <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
         )}
+        {tab === "arenainfo" && arena && (
+          <ArenaInfoTab arena={arena} onChanged={loadData} dict={dict} />
+        )}
         {tab === "speakerteam" && arena && (
           <SpeakerteamSection arenaId={arena.id} arena={arena} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
         )}
@@ -463,14 +466,6 @@ function OversiktSection({
           </p>
           <InfoTavleCard arenaId={arena.id} embedded dict={dict} locale={locale} />
         </div>
-      </div>
-
-      <div style={{ marginTop: "24px" }}>
-        <KontaktinfoSection arena={arena} onSaved={onChanged} dict={dict} />
-      </div>
-
-      <div style={{ marginTop: "24px" }}>
-        <GeofenceSection arena={arena} onSaved={onChanged} dict={dict} />
       </div>
 
       <div style={{ marginTop: "24px" }}>
@@ -671,14 +666,36 @@ function StatistikkSection({
 // AdresseSection (gateadresse/postnummer/by) — arenaeier kunne tidligere KUN
 // rette disse gjennom Admin. Ett samlet lagre-kall for hele skjemaet, samme
 // mønster som AddArenaModal i admin/AdminContent.tsx.
-function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
+/* ─── ARENAINFO (egen fane) ─── */
+
+// Alt fra registreringsskjemaet (registrer/RegistrerPageContent.tsx) samlet
+// på ett sted — het tidligere to separate kort (arena-detaljer og adresse)
+// som så ut som overlappende/duplikate seksjoner. Nå ett skjema, én
+// lagre-knapp, samme feltrekkefølge som registreringen selv, pluss
+// dekningsområdet (kart) rett under.
+function ArenaInfoTab({ arena, onChanged, dict }: { arena: Arena; onChanged: () => void; dict: Dictionary }) {
+  return (
+    <div>
+      <ArenaInfoSection arena={arena} onSaved={onChanged} dict={dict} />
+      <div style={{ marginTop: "24px" }}>
+        <GeofenceKartSection arena={arena} onSaved={onChanged} dict={dict} />
+      </div>
+    </div>
+  );
+}
+
+function ArenaInfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
   const t = dict.minSide.kontaktinfo;
+  const ta = dict.minSide.geofence; // adressefeltenes tekster ligger her fra før
   const [form, setForm] = useState({
     arenanavn: arena.arenanavn ?? "",
     kategori: arena.kategori ?? "",
     land: arena.land ?? "Norge",
     kapasitet: arena.kapasitet ?? "",
     org_nummer: arena.org_nummer ?? "",
+    adresse_gate: arena.adresse_gate ?? arena.adresse ?? "",
+    postnummer: arena.postnummer ?? "",
+    by: arena.by ?? "",
     fornavn: arena.fornavn ?? "",
     etternavn: arena.etternavn ?? "",
     epost: arena.epost ?? "",
@@ -687,17 +704,33 @@ function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: (
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
+  const geo = useGeocoder();
 
   const opprinnelig = {
     arenanavn: arena.arenanavn ?? "", kategori: arena.kategori ?? "", land: arena.land ?? "Norge",
-    kapasitet: arena.kapasitet ?? "", org_nummer: arena.org_nummer ?? "", fornavn: arena.fornavn ?? "",
-    etternavn: arena.etternavn ?? "", epost: arena.epost ?? "", telefon: arena.telefon ?? "",
+    kapasitet: arena.kapasitet ?? "", org_nummer: arena.org_nummer ?? "",
+    adresse_gate: arena.adresse_gate ?? arena.adresse ?? "", postnummer: arena.postnummer ?? "", by: arena.by ?? "",
+    fornavn: arena.fornavn ?? "", etternavn: arena.etternavn ?? "", epost: arena.epost ?? "", telefon: arena.telefon ?? "",
   };
   const harEndring = Object.keys(form).some((k) => form[k as keyof typeof form] !== opprinnelig[k as keyof typeof opprinnelig]);
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
+    setForm((prev) => {
+      const next = { ...prev, [name]: value };
+      // Geokoder i bakgrunnen som en hjelp/bekreftelse mens man skriver —
+      // men rører ALDRI lat/lng automatisk. Å flytte selve kartnålen skjer
+      // kun i kart-seksjonen under, slik at en unøyaktig geokoding aldri kan
+      // flytte en allerede riktig plassert nål ved et uhell.
+      if (["adresse_gate", "postnummer", "by"].includes(name)) {
+        geo.schedule(
+          name === "adresse_gate" ? value : next.adresse_gate,
+          name === "postnummer" ? value : next.postnummer,
+          name === "by" ? value : next.by,
+        );
+      }
+      return next;
+    });
   }
 
   async function handleSave() {
@@ -711,6 +744,9 @@ function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: (
         land: form.land || null,
         kapasitet: form.kapasitet || null,
         org_nummer: form.org_nummer || null,
+        adresse_gate: form.adresse_gate || null,
+        postnummer: form.postnummer || null,
+        by: form.by || null,
         fornavn: form.fornavn || null,
         etternavn: form.etternavn || null,
         epost: form.epost || null,
@@ -750,7 +786,7 @@ function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: (
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "24px" }}>
         <div>
           <label style={fieldLabelStyle}>{t.fieldKapasitet}</label>
           <select name="kapasitet" value={form.kapasitet} onChange={handleChange} style={inputStyle}>
@@ -763,6 +799,31 @@ function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: (
           <input type="text" name="org_nummer" value={form.org_nummer} onChange={handleChange} style={inputStyle} />
         </div>
       </div>
+
+      <h4 style={{ ...sectionHeadingStyle, fontSize: "15px", marginBottom: "16px", color: "rgba(255,255,255,0.7)" }}>{ta.addressTitle}</h4>
+      <label style={fieldLabelStyle}>{ta.fieldGateadresse}</label>
+      <input
+        type="text"
+        name="adresse_gate"
+        value={form.adresse_gate}
+        onChange={handleChange}
+        placeholder={ta.gateadressePlaceholder}
+        style={{ ...inputStyle, marginBottom: "16px" }}
+      />
+      <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
+        <div style={{ flex: "0 0 140px" }}>
+          <label style={fieldLabelStyle}>{ta.fieldPostnummer}</label>
+          <input type="text" name="postnummer" value={form.postnummer} onChange={handleChange} placeholder={ta.postnummerPlaceholder} style={inputStyle} />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={fieldLabelStyle}>{ta.fieldBy}</label>
+          <input type="text" name="by" value={form.by} onChange={handleChange} placeholder={ta.byPlaceholder} style={inputStyle} />
+        </div>
+      </div>
+      {geo.status === "loading" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{ta.geoLoading}</p>}
+      {geo.status === "found" && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "8px" }}>✓ {ta.geoFound}{geo.displayName ? `: ${geo.displayName}` : ""}</p>}
+      {geo.status === "not_found" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{ta.geoNotFound}</p>}
+      {geo.status === "error" && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{ta.geoError}</p>}
 
       <h4 style={{ ...sectionHeadingStyle, fontSize: "15px", marginTop: "24px", marginBottom: "16px", color: "rgba(255,255,255,0.7)" }}>{t.contactHeading}</h4>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
@@ -790,110 +851,6 @@ function KontaktinfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: (
       {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.saved}</p>}
       <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
         {saving ? t.saving : t.saveButton}
-      </button>
-    </div>
-  );
-}
-
-function GeofenceSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
-  return (
-    <>
-      <AdresseSection arena={arena} onSaved={onSaved} dict={dict} />
-      <GeofenceKartSection arena={arena} onSaved={onSaved} dict={dict} />
-    </>
-  );
-}
-
-// Arenaeiers egen redigering av gateadresse — fantes tidligere KUN i Admin.
-// Geokoder i bakgrunnen mens man skriver (samme mønster som AddArenaModal i
-// admin/AdminContent.tsx, delt via useGeocoder), men rører ALDRI lat/lng
-// automatisk her — kun adressetekstfeltene lagres. Å flytte selve kartnålen
-// er et bevisst separat steg (kart-seksjonen under / ManuellPosisjon), slik
-// at en upresis geokoding aldri kan endre en allerede riktig plassert nål
-// ved et uhell.
-function AdresseSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
-  const t = dict.minSide.geofence;
-  const [gate, setGate] = useState(arena.adresse_gate ?? arena.adresse ?? "");
-  const [postnummer, setPostnummer] = useState(arena.postnummer ?? "");
-  const [by, setBy] = useState(arena.by ?? "");
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-  const [error, setError] = useState("");
-  const geo = useGeocoder();
-
-  const harEndring =
-    gate !== (arena.adresse_gate ?? arena.adresse ?? "") ||
-    postnummer !== (arena.postnummer ?? "") ||
-    by !== (arena.by ?? "");
-
-  function handleChange(felt: "gate" | "postnummer" | "by", verdi: string) {
-    const nesteGate = felt === "gate" ? verdi : gate;
-    const nestePostnummer = felt === "postnummer" ? verdi : postnummer;
-    const nesteBy = felt === "by" ? verdi : by;
-    if (felt === "gate") setGate(verdi);
-    else if (felt === "postnummer") setPostnummer(verdi);
-    else setBy(verdi);
-    geo.schedule(nesteGate, nestePostnummer, nesteBy);
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    setError("");
-    const { error } = await supabase
-      .from("arenaer")
-      .update({ adresse_gate: gate || null, postnummer: postnummer || null, by: by || null })
-      .eq("id", arena.id);
-    setSaving(false);
-    if (error) { setError(error.message); return; }
-    setSaved(true);
-    onSaved();
-    setTimeout(() => setSaved(false), 3000);
-  }
-
-  return (
-    <div style={cardStyle}>
-      <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.addressTitle}</h3>
-      <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "16px" }}>
-        {t.addressSubtitle}
-      </p>
-      <label style={fieldLabelStyle}>{t.fieldGateadresse}</label>
-      <input
-        type="text"
-        value={gate}
-        onChange={(e) => handleChange("gate", e.target.value)}
-        placeholder={t.gateadressePlaceholder}
-        style={{ ...inputStyle, marginBottom: "16px" }}
-      />
-      <div style={{ display: "flex", gap: "12px", marginBottom: "8px" }}>
-        <div style={{ flex: "0 0 140px" }}>
-          <label style={fieldLabelStyle}>{t.fieldPostnummer}</label>
-          <input
-            type="text"
-            value={postnummer}
-            onChange={(e) => handleChange("postnummer", e.target.value)}
-            placeholder={t.postnummerPlaceholder}
-            style={inputStyle}
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label style={fieldLabelStyle}>{t.fieldBy}</label>
-          <input
-            type="text"
-            value={by}
-            onChange={(e) => handleChange("by", e.target.value)}
-            placeholder={t.byPlaceholder}
-            style={inputStyle}
-          />
-        </div>
-      </div>
-      {geo.status === "loading" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{t.geoLoading}</p>}
-      {geo.status === "found" && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "8px" }}>✓ {t.geoFound}{geo.displayName ? `: ${geo.displayName}` : ""}</p>}
-      {geo.status === "not_found" && <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginTop: "8px" }}>{t.geoNotFound}</p>}
-      {geo.status === "error" && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{t.geoError}</p>}
-      {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{error}</p>}
-      {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "8px" }}>{t.addressSaved}</p>}
-      <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
-        {saving ? t.saving : t.saveAddressButton}
       </button>
     </div>
   );
