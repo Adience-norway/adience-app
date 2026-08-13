@@ -309,13 +309,20 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   if (loading) return <div style={pageStyle} />;
 
   if (noArena) {
+    // Kontoen er fortsatt gyldig innlogget hos Supabase — bare uten en
+    // tilknyttet arena. Kan hende det er en admin-konto uten egen arena, så
+    // gi en vei videre til Admin i stedet for at eneste utvei er å logge ut.
+    const adminHref = locale === "en" ? "/en/admin" : "/admin";
     return (
       <div style={pageStyle}>
         <div style={{ maxWidth: "480px", margin: "0 auto", padding: "80px 24px", textAlign: "center" }}>
           <p style={{ color: "rgba(255,255,255,0.6)", lineHeight: 1.6 }}>
             {t.noArena.message}
           </p>
-          <button onClick={handleLogout} style={{ ...ghostBtnStyle, marginTop: "24px" }}>{t.noArena.logout}</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", marginTop: "24px" }}>
+            <a href={adminHref} style={{ ...coralBtnStyleAuto, textDecoration: "none" }}>{t.noArena.goToAdmin}</a>
+            <button onClick={handleLogout} style={ghostBtnStyle}>{t.noArena.logout}</button>
+          </div>
         </div>
       </div>
     );

@@ -113,7 +113,7 @@ const no: {
       adminBannerPrefix: string; adminBannerSuffix: string;
     };
     tabs: Record<"oversikt" | "arenainfo" | "statistikk" | "geofence" | "speakerteam" | "kurs" | "sertifikater" | "media" | "abonnement", string>;
-    noArena: { message: string; logout: string };
+    noArena: { message: string; goToAdmin: string; logout: string };
     myPageLabel: string;
     oversikt: {
       statStreaming: string; statActive: string; statInactive: string;
@@ -562,6 +562,7 @@ const no: {
     },
     noArena: {
       message: "Kontoen din er ikke knyttet til noen arena ennå. Ta kontakt med oss på post@adience.no.",
+      goToAdmin: "Gå til Admin",
       logout: "Logg ut",
     },
     myPageLabel: "Min side",
@@ -755,6 +756,7 @@ const no: {
     },
     ingenTilgang: {
       message: "Denne kontoen har ikke admin-tilgang til Ådience-panelet.",
+      goToMinSide: "Gå til Min side",
       logout: "Logg ut",
     },
     dashboard: {

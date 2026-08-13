@@ -70,7 +70,7 @@ export function AdminContent({ dict, locale }: { dict: Dictionary; locale: Local
 
   if (checking || (session && isAdmin === null)) return <div style={pageStyle} />;
   if (!session) return <LoginScreen dict={dict} locale={locale} />;
-  if (!isAdmin) return <IngenTilgangScreen dict={dict} />;
+  if (!isAdmin) return <IngenTilgangScreen dict={dict} locale={locale} />;
   return <Dashboard dict={dict} locale={locale} />;
 }
 
@@ -185,8 +185,9 @@ function LoginScreen({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   );
 }
 
-function IngenTilgangScreen({ dict }: { dict: Dictionary }) {
+function IngenTilgangScreen({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   const t = dict.admin.ingenTilgang;
+  const minSideHref = locale === "en" ? "/en/min-side" : "/min-side";
   return (
     <div style={pageStyle}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh" }}>
@@ -199,6 +200,13 @@ function IngenTilgangScreen({ dict }: { dict: Dictionary }) {
             <p style={{ fontSize: "15px", lineHeight: 1.6, marginBottom: "20px" }}>
               {t.message}
             </p>
+            {/* Kontoen er fortsatt gyldig innlogget hos Supabase — bare uten
+                admin-rettigheter. Uten denne lenken var eneste vei videre å
+                logge ut, selv om kontoen kanskje er en helt vanlig
+                arena-eier-konto som skal bruke Min side. */}
+            <a href={minSideHref} style={{ ...coralBtnStyle, display: "block", width: "100%", textAlign: "center", textDecoration: "none", boxSizing: "border-box", marginBottom: "12px" }}>
+              {t.goToMinSide}
+            </a>
             <button onClick={() => supabase.auth.signOut()} style={{ ...ghostBtnStyle, width: "100%" }}>
               {t.logout}
             </button>

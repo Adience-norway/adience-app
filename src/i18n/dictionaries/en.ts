@@ -343,6 +343,7 @@ const en: Dictionary = {
     },
     noArena: {
       message: "Your account isn't linked to a venue yet. Contact us at post@adience.no.",
+      goToAdmin: "Go to Admin",
       logout: "Log out",
     },
     myPageLabel: "My page",
@@ -536,6 +537,7 @@ const en: Dictionary = {
     },
     ingenTilgang: {
       message: "This account doesn't have admin access to the Ådience panel.",
+      goToMinSide: "Go to My page",
       logout: "Log out",
     },
     dashboard: {
