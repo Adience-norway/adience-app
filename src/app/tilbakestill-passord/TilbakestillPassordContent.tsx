@@ -11,10 +11,16 @@ export function TilbakestillPassordContent() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
+  const [email, setEmail] = useState("");
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setReady(!!data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setReady(!!data.session);
+      if (data.session?.user.email) setEmail(data.session.user.email);
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "PASSWORD_RECOVERY" || session) setReady(true);
+      if (session?.user.email) setEmail(session.user.email);
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -68,16 +74,17 @@ export function TilbakestillPassordContent() {
               </>
             ) : (
               <form onSubmit={handleSubmit}>
+                {email && <input type="hidden" autoComplete="username" value={email} readOnly />}
                 <label style={fieldLabelStyle}>Nytt passord</label>
                 <input
                   type="password" required autoFocus value={passord} onChange={(e) => setPassord(e.target.value)}
-                  style={inputStyle} placeholder="••••••••••" minLength={6}
+                  style={inputStyle} placeholder="••••••••••" minLength={6} autoComplete="new-password"
                 />
                 <div style={{ height: "16px" }} />
                 <label style={fieldLabelStyle}>Gjenta nytt passord</label>
                 <input
                   type="password" required value={passord2} onChange={(e) => setPassord2(e.target.value)}
-                  style={inputStyle} placeholder="••••••••••" minLength={6}
+                  style={inputStyle} placeholder="••••••••••" minLength={6} autoComplete="new-password"
                 />
                 {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
                 <button type="submit" disabled={loading} style={{ ...tealBtnStyle, width: "100%", marginTop: "24px" }}>
