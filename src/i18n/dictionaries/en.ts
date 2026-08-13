@@ -764,6 +764,7 @@ const en: Dictionary = {
     nav: { blog: "Blog", backToHome: "← Home" },
     title: "Ådience Cast",
     subtitle: "Browser sender for live venue streaming",
+    subtitleVerified: "Ådience Casting",
     sectionKilde: "SOURCE",
     sectionLydniva: "AUDIO LEVEL",
     noMicFound: "No microphones found",

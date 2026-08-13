@@ -57,6 +57,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   const [streamId, setStreamId]         = useState(initialStreamIdFromUrl);
   const [passord, setPassord]           = useState("");
   const [passordVerifisert, setPassordVerifisert] = useState(false);
+  const [arenaNavn, setArenaNavn]       = useState("");
   const [verifiserer, setVerifiserer]   = useState(false);
   const [passordFeil, setPassordFeil]   = useState("");
   const [devices, setDevices]           = useState<MediaDeviceInfo[]>([]);
@@ -111,6 +112,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   useEffect(() => {
     setPassordVerifisert(false);
     setPassordFeil("");
+    setArenaNavn("");
   }, [streamId]);
 
   async function handleVerifiserPassord() {
@@ -126,12 +128,15 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
       const data = await res.json();
       if (data.ok) {
         setPassordVerifisert(true);
+        setArenaNavn(data.arenaNavn ?? "");
       } else {
         setPassordVerifisert(false);
+        setArenaNavn("");
         setPassordFeil(t.passordFeil);
       }
     } catch {
       setPassordVerifisert(false);
+      setArenaNavn("");
       setPassordFeil(t.passordFeil);
     } finally {
       setVerifiserer(false);
@@ -379,8 +384,17 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
           {/* Title + status pill */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "36px" }}>
             <div>
-              <h1 style={headingStyle}>{t.title}</h1>
-              <p style={subStyle}>{t.subtitle}</p>
+              {passordVerifisert && arenaNavn ? (
+                <>
+                  <h1 style={headingStyle}>{arenaNavn}</h1>
+                  <p style={subStyle}>{t.subtitleVerified}</p>
+                </>
+              ) : (
+                <>
+                  <h1 style={headingStyle}>{t.title}</h1>
+                  <p style={subStyle}>{t.subtitle}</p>
+                </>
+              )}
             </div>
             <StatusPill status={status} t={t} />
           </div>

@@ -205,7 +205,7 @@ const no: {
   };
   cast: {
     nav: { blog: string; backToHome: string };
-    title: string; subtitle: string;
+    title: string; subtitle: string; subtitleVerified: string;
     sectionKilde: string; sectionLydniva: string;
     noMicFound: string; micFallback: string;
     errorFillStreamId: string; errorAntMedia: string; errorMicConnect: string;
@@ -983,6 +983,7 @@ const no: {
     nav: { blog: "Blogg", backToHome: "← Forsiden" },
     title: "Ådience Cast",
     subtitle: "Browser-sender for live arenastreaming",
+    subtitleVerified: "Ådience Casting",
     sectionKilde: "KILDE",
     sectionLydniva: "LYDNIVÅ",
     noMicFound: "Ingen mikrofoner funnet",

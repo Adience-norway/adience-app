@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   const client = createClient(supabaseUrl, serviceRoleKey);
   const { data, error } = await client
     .from("arenaer")
-    .select("cast_passord")
+    .select("cast_passord, arenanavn")
     .eq("stream_id", streamId)
     .maybeSingle();
 
@@ -32,5 +32,6 @@ export async function POST(req: NextRequest) {
   }
 
   const ok = !!data.cast_passord && data.cast_passord === passord;
-  return NextResponse.json({ ok });
+  // arenanavn kun med i svaret ved korrekt passord — ikke lekk arenanavn til noen som bare gjetter på stream-ID-en.
+  return NextResponse.json({ ok, arenaNavn: ok ? data.arenanavn : undefined });
 }
