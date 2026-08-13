@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import Anthropic from "@anthropic-ai/sdk";
 
 type Locale = "no" | "en";
 
@@ -95,7 +96,43 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.noAccess }, { status: 403 });
   }
 
-  const motiv = body.prompt?.trim() || MODUL_MOTIV[modulIndex];
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+  // Ingen egen prompt gitt -- hent modulens faktiske kursTekst og la Claude
+  // trekke ut et konkret visuelt motiv fra INNHOLDET, i stedet for å alltid
+  // falle tilbake på det samme faste, generiske motivet for modulen.
+  let motiv = body.prompt?.trim();
+  if (!motiv) {
+    const { data: tekstBlokker } = await adminClient
+      .from("kurs_innhold")
+      .select("innhold")
+      .eq("modul_index", modulIndex)
+      .eq("type", "tekst")
+      .in("sprak", ["no", "en"])
+      .order("rekkefolge", { ascending: true });
+    const kursTekst = (tekstBlokker ?? []).map((b) => b.innhold).join("\n\n");
+
+    if (kursTekst && process.env.ANTHROPIC_API_KEY) {
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const response = await anthropic.messages.create({
+          model: "claude-opus-4-8",
+          max_tokens: 200,
+          output_config: { effort: "low" },
+          messages: [{
+            role: "user",
+            content: `Read this speaker-training course module text (may be in Norwegian):\n\n${kursTekst}\n\nDescribe, in one or two vivid sentences in English, a single concrete visual scene that captures this module's central theme -- suitable as a prompt for an AI image generator. No text/logos/signage in the scene. Reply with only the scene description, nothing else.`,
+          }],
+        });
+        const textBlock = response.content.find((b) => b.type === "text");
+        const avledet = textBlock?.type === "text" ? textBlock.text.trim() : "";
+        if (avledet) motiv = avledet;
+      } catch {
+        // Faller tilbake på standardmotivet under -- ikke kritisk.
+      }
+    }
+    if (!motiv) motiv = MODUL_MOTIV[modulIndex];
+  }
 
   let b64: string;
   try {
@@ -121,7 +158,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `${err.generateFailed} (${message})` }, { status: 502 });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const path = `covers/${modulIndex}-${Date.now()}.png`;
   const bytes = Buffer.from(b64, "base64");
   const { data: uploadData, error: uploadError } = await adminClient.storage

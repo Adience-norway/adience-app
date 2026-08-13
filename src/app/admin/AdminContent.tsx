@@ -1067,7 +1067,12 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
               <div key={b.id} style={{ display: "flex", alignItems: "flex-start", gap: "12px", backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 14px" }}>
                 <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, flexShrink: 0, marginTop: "3px", width: "42px" }}>{b.type}</span>
                 <div style={{ flex: 1, fontSize: "14px", color: "rgba(255,255,255,0.8)", wordBreak: "break-word" as const }}>
-                  {b.type === "tekst" ? b.innhold : (
+                  {b.type === "tekst" ? b.innhold : b.type === "bilde" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={b.innhold} alt="" style={{ maxWidth: "240px", maxHeight: "140px", borderRadius: "6px", display: "block" }} />
+                  ) : b.type === "lyd" ? (
+                    <audio controls src={b.innhold} style={{ width: "100%", maxWidth: "320px" }} />
+                  ) : (
                     <a href={b.innhold} target="_blank" rel="noopener noreferrer" style={{ color: "#33D3C4" }}>{b.innhold}</a>
                   )}
                 </div>
