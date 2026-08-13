@@ -158,17 +158,18 @@ const no: {
     };
     speakerteam: {
       countSuffix: string; cancel: string; addSpeaker: string;
-      fieldFornavn: string; fieldEtternavn: string; fieldEpost: string; saving: string; addButton: string;
-      emptyState: string;
-      thName: string; thEmail: string; thProgress: string; thCertified: string; certifiedLabel: string;
+      fieldFornavn: string; fieldEtternavn: string; fieldEpost: string; fieldRolle: string; saving: string; addButton: string;
+      emptyState: string; deleteButton: string; confirmDelete: string;
+      thName: string; thEmail: string; thRolle: string; thProgress: string; thCertified: string; certifiedLabel: string;
     };
     kurs: {
       emptyState: string; selectSpeaker: string; certifiedPrefix: string; nextModuleButton: string;
-      modules: string[];
+      confirmCheckbox: string;
+      modules: string[]; stikkord: string[];
     };
     sertifikater: {
       emptyState: string; certifiedPrefix: string; downloadCert: string;
-      certTitlePrefix: string; certHeader: string; certCompletedFor: string;
+      certTitlePrefix: string; certHeader: string; certCompletedFor: string; laertTittel: string;
     };
     media: {
       qrTitlePrefix: string; qrHelpText: string; noStreamId: string;
@@ -667,11 +668,15 @@ const no: {
       fieldFornavn: "Fornavn",
       fieldEtternavn: "Etternavn",
       fieldEpost: "E-post",
+      fieldRolle: "Rolle (f.eks. Hovedspeaker, Lydmann, Utspeaker)",
       saving: "Lagrer…",
       addButton: "Legg til",
       emptyState: "Ingen speakere registrert ennå.",
+      deleteButton: "Slett",
+      confirmDelete: "Fjerne denne speakeren fra teamet?",
       thName: "Navn",
       thEmail: "E-post",
+      thRolle: "Rolle",
       thProgress: "Kursprogresjon",
       thCertified: "Sertifisert",
       certifiedLabel: "✓ Sertifisert",
@@ -681,12 +686,20 @@ const no: {
       selectSpeaker: "Velg speaker",
       certifiedPrefix: "✓ Sertifisert",
       nextModuleButton: "Fullfør neste modul",
+      confirmCheckbox: "Jeg har lest og forstått innholdet i denne modulen.",
       modules: [
         "Introduksjon til Ådience",
         "Mikrofonteknikk og lydkvalitet",
         "Kommentering og publikumsengasjement",
         "Regelverk og personvern",
         "Avsluttende prøve",
+      ],
+      stikkord: [
+        "Teamet bak mikrofonen — hvorfor dere er avhengige av hverandre",
+        "Streamen går ALDRI i pause — kun arenalyden mutes",
+        "Å skape en 90-minutters opplevelse publikum husker",
+        "Regelverk, pauseprogram og beredskap ved kritiske hendelser",
+        "Faste roller og rutiner i teamet, klare før første kamp",
       ],
     },
     sertifikater: {
@@ -695,6 +708,7 @@ const no: {
       downloadCert: "Last ned sertifikat",
       certTitlePrefix: "Sertifikat —",
       certHeader: "ÅDIENCE SERTIFISERING",
+      laertTittel: "Dette har du lært",
       certCompletedFor: "har fullført Ådience speakerkurs for",
     },
     media: {

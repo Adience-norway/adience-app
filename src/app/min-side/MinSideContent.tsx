@@ -1037,14 +1037,24 @@ function SpeakerteamSection({
   const [fornavn, setFornavn] = useState("");
   const [etternavn, setEtternavn] = useState("");
   const [epost, setEpost] = useState("");
+  const [rolle, setRolle] = useState("");
   const [saving, setSaving] = useState(false);
+  const [sletter, setSletter] = useState<string | null>(null);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    await supabase.from("speakerteam").insert({ arena_id: arenaId, fornavn, etternavn, epost });
+    await supabase.from("speakerteam").insert({ arena_id: arenaId, fornavn, etternavn, epost, rolle: rolle.trim() || null });
     setSaving(false);
-    setFornavn(""); setEtternavn(""); setEpost(""); setShowForm(false);
+    setFornavn(""); setEtternavn(""); setEpost(""); setRolle(""); setShowForm(false);
+    onChanged();
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm(t.confirmDelete)) return;
+    setSletter(id);
+    await supabase.from("speakerteam").delete().eq("id", id);
+    setSletter(null);
     onChanged();
   }
 
@@ -1062,6 +1072,7 @@ function SpeakerteamSection({
           <div><label style={fieldLabelStyle}>{t.fieldFornavn}</label><input required value={fornavn} onChange={(e) => setFornavn(e.target.value)} style={inputStyle} /></div>
           <div><label style={fieldLabelStyle}>{t.fieldEtternavn}</label><input required value={etternavn} onChange={(e) => setEtternavn(e.target.value)} style={inputStyle} /></div>
           <div><label style={fieldLabelStyle}>{t.fieldEpost}</label><input type="email" required value={epost} onChange={(e) => setEpost(e.target.value)} style={inputStyle} /></div>
+          <div><label style={fieldLabelStyle}>{t.fieldRolle}</label><input value={rolle} onChange={(e) => setRolle(e.target.value)} style={inputStyle} /></div>
           <button type="submit" disabled={saving} style={tealBtnStyle}>{saving ? t.saving : t.addButton}</button>
         </form>
       )}
@@ -1071,15 +1082,21 @@ function SpeakerteamSection({
       ) : (
         <table style={tableStyle}>
           <thead><tr style={theadRowStyle}>
-            <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th>
+            <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thRolle}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th><th style={thStyle} />
           </tr></thead>
           <tbody>
             {speakerteam.map((s) => (
               <tr key={s.id}>
                 <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
                 <td style={tdStyle}>{s.epost}</td>
+                <td style={tdStyle}>{s.rolle ?? "—"}</td>
                 <td style={tdStyle}>{s.kurs_progresjon} / {kursModuler.length}</td>
                 <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
+                <td style={tdStyle}>
+                  <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
+                    {t.deleteButton}
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -1133,6 +1150,11 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
   const [selectedId, setSelectedId] = useState<string>(speakerteam[0]?.id ?? "");
   const selected = speakerteam.find((s) => s.id === selectedId) ?? null;
   const [innhold, setInnhold] = useState<KursInnhold[]>([]);
+  const [bekreftet, setBekreftet] = useState(false);
+
+  // Nullstill avkrysningen når speaker eller modul endres, slik at den faktisk
+  // må bekreftes på nytt for HVER modul — ikke bare klikkes én gang totalt.
+  useEffect(() => { setBekreftet(false); }, [selected?.id, selected?.kurs_progresjon]);
 
   // Innholdet for modulen speakeren står på nå (kurs_progresjon peker på
   // NESTE u-fullførte modul) — vises før "Neste modul", slik at bekreftelsen
@@ -1199,7 +1221,11 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
                   {innhold.map((b) => <KursInnholdBlokk key={b.id} blokk={b} />)}
                 </div>
               )}
-              <button onClick={advance} style={tealBtnStyle}>{t.nextModuleButton}</button>
+              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "16px", fontSize: "14px", color: "rgba(255,255,255,0.7)", cursor: "pointer" }}>
+                <input type="checkbox" checked={bekreftet} onChange={(e) => setBekreftet(e.target.checked)} style={{ marginTop: "3px" }} />
+                {t.confirmCheckbox}
+              </label>
+              <button onClick={advance} disabled={!bekreftet} style={{ ...tealBtnStyle, opacity: bekreftet ? 1 : 0.4, cursor: bekreftet ? "pointer" : "not-allowed" }}>{t.nextModuleButton}</button>
             </>
           )}
         </div>
@@ -1218,18 +1244,46 @@ function SertifikaterSection({ arena, speakerteam, dict, locale }: { arena: Aren
   function printCertificate(s: SpeakerTeam) {
     const win = window.open("", "_blank");
     if (!win) return;
+    const stikkordHtml = dict.minSide.kurs.stikkord
+      .map((punkt: string) => `<li style="margin-bottom:10px;padding-left:22px;position:relative;">
+          <span style="position:absolute;left:0;color:#33D3C4;">✓</span>${punkt}
+        </li>`)
+      .join("");
     win.document.write(`
       <html><head><title>${t.certTitlePrefix} ${s.fornavn} ${s.etternavn}</title>
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@700;800&display=swap" rel="stylesheet"></head>
-      <body style="font-family:'Inter',system-ui,sans-serif;background:#073E46;color:#fff;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;">
-        <div style="border:3px solid #33D3C4;border-radius:16px;padding:60px;text-align:center;max-width:600px;">
-          <p style="letter-spacing:0.2em;color:#33D3C4;font-size:13px;">${t.certHeader}</p>
-          <h1 style="font-family:'Montserrat',system-ui,sans-serif;font-weight:800;font-size:32px;margin:24px 0;">${s.fornavn} ${s.etternavn}</h1>
-          <p style="color:rgba(255,255,255,0.7);">${t.certCompletedFor}</p>
-          <p style="font-size:20px;margin:12px 0;">${arena?.arenanavn ?? ""}</p>
-          <p style="color:rgba(255,255,255,0.4);font-size:13px;margin-top:32px;">
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Montserrat:wght@700;800&display=swap" rel="stylesheet">
+      <style>@page { size: A4; margin: 0; }</style>
+      </head>
+      <body style="font-family:'Inter',system-ui,sans-serif;background:#073E46;color:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;">
+        <div style="border:3px solid #33D3C4;border-radius:20px;padding:56px 60px;text-align:center;max-width:640px;background:linear-gradient(160deg, #0B4B54 0%, #073E46 60%);">
+          <svg width="110" height="110" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" style="margin-bottom:8px;">
+            <circle cx="60" cy="60" r="56" stroke="#33D3C4" stroke-width="2"/>
+            <circle cx="60" cy="60" r="48" stroke="#FF6B4A" stroke-width="1" stroke-dasharray="2 3"/>
+            <path d="M30 85 Q20 70 28 50 Q34 60 30 85" fill="#33D3C4" opacity="0.45"/>
+            <path d="M25 78 Q16 66 22 48" stroke="#33D3C4" stroke-width="1.5" fill="none" opacity="0.7"/>
+            <path d="M90 85 Q100 70 92 50 Q86 60 90 85" fill="#33D3C4" opacity="0.45"/>
+            <path d="M95 78 Q104 66 98 48" stroke="#33D3C4" stroke-width="1.5" fill="none" opacity="0.7"/>
+            <rect x="42" y="50" width="6" height="20" rx="3" fill="#FF6B4A"/>
+            <rect x="52" y="40" width="6" height="40" rx="3" fill="#33D3C4"/>
+            <rect x="62" y="46" width="6" height="28" rx="3" fill="#FF6B4A"/>
+            <rect x="72" y="36" width="6" height="48" rx="3" fill="#33D3C4"/>
+          </svg>
+          <p style="letter-spacing:0.2em;color:#33D3C4;font-size:13px;margin:0;">${t.certHeader}</p>
+          <h1 style="font-family:'Montserrat',system-ui,sans-serif;font-weight:800;font-size:32px;margin:20px 0 4px;">${s.fornavn} ${s.etternavn}</h1>
+          ${s.rolle ? `<p style="color:#FF6B4A;font-size:13px;letter-spacing:0.06em;margin:0 0 16px;text-transform:uppercase;">${s.rolle}</p>` : ""}
+          <p style="color:rgba(255,255,255,0.7);margin-bottom:4px;">${t.certCompletedFor}</p>
+          <p style="font-size:20px;margin:4px 0 32px;font-weight:600;">${arena?.arenanavn ?? ""}</p>
+
+          <div style="text-align:left;background:rgba(255,255,255,0.04);border:1px solid rgba(51,211,196,0.15);border-radius:12px;padding:24px 28px;margin-bottom:28px;">
+            <p style="font-family:'Montserrat',system-ui,sans-serif;font-weight:700;font-size:13px;letter-spacing:0.1em;color:#33D3C4;margin:0 0 14px;">${t.laertTittel.toUpperCase()}</p>
+            <ul style="list-style:none;margin:0;padding:0;font-size:14px;line-height:1.5;color:rgba(255,255,255,0.85);">
+              ${stikkordHtml}
+            </ul>
+          </div>
+
+          <p style="color:rgba(255,255,255,0.4);font-size:13px;margin:0;">
             ${s.sertifikat_dato ? new Date(s.sertifikat_dato).toLocaleDateString(dateLocale) : ""}
           </p>
         </div>
