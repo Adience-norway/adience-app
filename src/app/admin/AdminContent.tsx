@@ -970,6 +970,23 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
     fetchBlokker();
   }
 
+  // Dra-og-slipp: flytter blokken til den nye posisjonen lokalt med en gang
+  // (optimistisk), skriver deretter hele den nye rekkefølgen til databasen som
+  // sekvensielle heltall -- en drag kan flytte flere plasser om gangen, så en
+  // enkel to-og-to-bytte (som flytt() over) er ikke nok her.
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+
+  async function dropPaPosisjon(malIndex: number) {
+    if (dragIndex === null || dragIndex === malIndex) { setDragIndex(null); return; }
+    const nye = [...blokker];
+    const [flyttet] = nye.splice(dragIndex, 1);
+    nye.splice(malIndex, 0, flyttet);
+    setBlokker(nye);
+    setDragIndex(null);
+    await Promise.all(nye.map((b, i) => supabase.from("kurs_innhold").update({ rekkefolge: i }).eq("id", b.id)));
+    fetchBlokker();
+  }
+
   return (
     <div style={{ marginTop: "16px" }}>
       <h2 style={{ ...pageHeadingStyle, fontSize: "20px", marginBottom: "8px" }}>{t.title}</h2>
@@ -1064,7 +1081,23 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
             {blokker.map((b, i) => (
-              <div key={b.id} style={{ display: "flex", alignItems: "flex-start", gap: "12px", backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 14px" }}>
+              <div
+                key={b.id}
+                draggable
+                onDragStart={() => setDragIndex(i)}
+                onDragOver={e => e.preventDefault()}
+                onDrop={() => dropPaPosisjon(i)}
+                onDragEnd={() => setDragIndex(null)}
+                style={{
+                  display: "flex", alignItems: "flex-start", gap: "12px",
+                  backgroundColor: "rgba(255,255,255,0.03)",
+                  border: dragIndex === i ? "1px solid #33D3C4" : "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "8px", padding: "12px 14px",
+                  opacity: dragIndex === i ? 0.4 : 1,
+                  cursor: "grab",
+                }}
+              >
+                <span style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0, marginTop: "1px", fontSize: "14px", lineHeight: 1 }}>⠿</span>
                 <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, flexShrink: 0, marginTop: "3px", width: "42px" }}>{b.type}</span>
                 <div style={{ flex: 1, fontSize: "14px", color: "rgba(255,255,255,0.8)", wordBreak: "break-word" as const }}>
                   {b.type === "tekst" ? b.innhold : b.type === "bilde" ? (
@@ -1138,26 +1171,29 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
               <button onClick={resetLeggTil} style={ghostBtnStyle} disabled={lasterOpp}>{t.cancel}</button>
             </div>
 
-            {leggerTil === "bilde" && (
-              <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-                <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginBottom: "8px" }}>{t.aiOr}</p>
-                <textarea
-                  value={aiPrompt}
-                  onChange={e => setAiPrompt(e.target.value)}
-                  placeholder={t.aiPromptPlaceholder}
-                  rows={2}
-                  style={{ ...inputStyle, resize: "vertical" as const, fontFamily: "var(--font-inter), system-ui, sans-serif" }}
-                  disabled={genererer}
-                />
-                <button
-                  onClick={genererMedAI}
-                  disabled={genererer || !aiPrompt.trim()}
-                  style={{ ...tealBtnStyle, marginTop: "10px", opacity: genererer || !aiPrompt.trim() ? 0.5 : 1 }}
-                >
-                  {genererer ? t.aiGenerating : t.aiGenerateButton}
-                </button>
-              </div>
-            )}
+            {/* AI-bilde tilgjengelig uansett hvilken medietype man startet i --
+                resultatet lagres alltid som en ekte bilde-blokk (se
+                /api/generate-kurs-bilde), så det gir mening som et
+                illustrativt alternativ selv om man egentlig var i gang med
+                å legge til lyd eller video. */}
+            <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginBottom: "8px" }}>{t.aiOr}</p>
+              <textarea
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                placeholder={t.aiPromptPlaceholder}
+                rows={2}
+                style={{ ...inputStyle, resize: "vertical" as const, fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+                disabled={genererer}
+              />
+              <button
+                onClick={genererMedAI}
+                disabled={genererer || !aiPrompt.trim()}
+                style={{ ...tealBtnStyle, marginTop: "10px", opacity: genererer || !aiPrompt.trim() ? 0.5 : 1 }}
+              >
+                {genererer ? t.aiGenerating : t.aiGenerateButton}
+              </button>
+            </div>
           </div>
         )}
       </div>
