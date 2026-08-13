@@ -124,6 +124,18 @@ export type KursInnhold = {
   opprettet: string;
 };
 
+export type KursSporsmal = {
+  id: string;
+  modul_id: string;
+  sprak: "no" | "en";
+  rekkefolge: number;
+  sporsmal: string;
+  alternativer: string[];
+  riktig_svar: number;
+  forklaring: string;
+  opprettet: string;
+};
+
 export type KursModulCover = {
   modul_id: string;
   bilde_url: string;

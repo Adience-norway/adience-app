@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Session } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType, type KursModulCover, type KursModul } from "@/lib/supabase";
+import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType, type KursModulCover, type KursModul, type KursSporsmal } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { HoldmusikkCard } from "@/components/HoldmusikkCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -1018,6 +1018,58 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
     fetchBlokker();
   }
 
+  // Multiple choice-spørsmål -- ett per modul er tanken, men UI-et støtter
+  // flere om noen vil det. Riktig svar vises IKKE skjult/hemmelig noe sted --
+  // en pragmatisk forenkling siden målgruppen er speakerteamet selv, ikke en
+  // fiendtlig part som prøver å jukse seg gjennom kurset.
+  const [sporsmal, setSporsmal] = useState<KursSporsmal[]>([]);
+  const [leggerTilSporsmal, setLeggerTilSporsmal] = useState(false);
+  const [nyttSporsmal, setNyttSporsmal] = useState("");
+  const [nyeAlternativer, setNyeAlternativer] = useState(["", "", "", ""]);
+  const [nyRiktigIndex, setNyRiktigIndex] = useState(0);
+  const [nyForklaring, setNyForklaring] = useState("");
+
+  const fetchSporsmal = useCallback(async () => {
+    if (!modulId) { setSporsmal([]); return; }
+    const { data } = await supabase
+      .from("kurs_sporsmal")
+      .select("*")
+      .eq("modul_id", modulId)
+      .eq("sprak", sprak)
+      .order("rekkefolge", { ascending: true });
+    setSporsmal(data ?? []);
+  }, [modulId, sprak]);
+
+  useEffect(() => { fetchSporsmal(); }, [fetchSporsmal]);
+
+  function resetSporsmalForm() {
+    setLeggerTilSporsmal(false);
+    setNyttSporsmal("");
+    setNyeAlternativer(["", "", "", ""]);
+    setNyRiktigIndex(0);
+    setNyForklaring("");
+  }
+
+  async function lagreSporsmal() {
+    const alternativer = nyeAlternativer.map(a => a.trim()).filter(Boolean);
+    if (!nyttSporsmal.trim() || alternativer.length < 2 || nyRiktigIndex >= alternativer.length || !modulId) return;
+    const nesteRekkefolge = (sporsmal.at(-1)?.rekkefolge ?? -1) + 1;
+    const { error } = await supabase.from("kurs_sporsmal").insert({
+      modul_id: modulId, sprak, rekkefolge: nesteRekkefolge,
+      sporsmal: nyttSporsmal.trim(), alternativer, riktig_svar: nyRiktigIndex,
+      forklaring: nyForklaring.trim(),
+    });
+    if (error) { setFeil(t.errorGeneric); return; }
+    resetSporsmalForm();
+    fetchSporsmal();
+  }
+
+  async function slettSporsmal(id: string) {
+    if (!confirm(t.confirmDelete)) return;
+    await supabase.from("kurs_sporsmal").delete().eq("id", id);
+    fetchSporsmal();
+  }
+
   async function flytt(blokk: KursInnhold, retning: -1 | 1) {
     const idx = blokker.findIndex(b => b.id === blokk.id);
     const naboIdx = idx + retning;
@@ -1321,6 +1373,70 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
           </div>
         )}
       </div>
+
+      {gjeldendeModul && (
+        <div style={{ ...cardStyle, marginTop: "16px" }}>
+          <p style={{ fontWeight: 600, marginBottom: "4px" }}>{t.sporsmalTitle}</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "16px" }}>{t.sporsmalHelpText}</p>
+
+          {sporsmal.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+              {sporsmal.map(s => (
+                <div key={s.id} style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 14px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                    <p style={{ fontSize: "14px", fontWeight: 600, marginBottom: "8px" }}>{s.sporsmal}</p>
+                    <button onClick={() => slettSporsmal(s.id)} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F", flexShrink: 0 }}>{t.delete}</button>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "4px", marginBottom: s.forklaring ? "8px" : 0 }}>
+                    {s.alternativer.map((alt, i) => (
+                      <p key={i} style={{ fontSize: "13px", color: i === s.riktig_svar ? "#33D3C4" : "rgba(255,255,255,0.5)", margin: 0 }}>
+                        {i === s.riktig_svar ? "✓ " : "· "}{alt}
+                      </p>
+                    ))}
+                  </div>
+                  {s.forklaring && <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", fontStyle: "italic" as const, margin: 0 }}>{s.forklaring}</p>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {leggerTilSporsmal ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <input value={nyttSporsmal} onChange={e => setNyttSporsmal(e.target.value)} placeholder={t.sporsmalPlaceholder} style={inputStyle} />
+              {nyeAlternativer.map((alt, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <input
+                    type="radio"
+                    checked={nyRiktigIndex === i}
+                    onChange={() => setNyRiktigIndex(i)}
+                  />
+                  <input
+                    value={alt}
+                    onChange={e => setNyeAlternativer(prev => prev.map((v, j) => j === i ? e.target.value : v))}
+                    placeholder={`${t.sporsmalAlternativPlaceholder} ${i + 1}`}
+                    style={{ ...inputStyle, flex: 1 }}
+                  />
+                </div>
+              ))}
+              <button onClick={() => setNyeAlternativer(prev => [...prev, ""])} style={{ ...ghostBtnStyle, alignSelf: "flex-start" }}>{t.sporsmalLeggTilAlternativ}</button>
+              <textarea
+                value={nyForklaring}
+                onChange={e => setNyForklaring(e.target.value)}
+                placeholder={t.sporsmalForklaringPlaceholder}
+                rows={2}
+                style={{ ...inputStyle, resize: "vertical" as const, fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+              />
+              {feil && <p style={{ color: "#D94F4F", fontSize: "13px" }}>{feil}</p>}
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button onClick={lagreSporsmal} style={tealBtnStyle}>{t.save}</button>
+                <button onClick={resetSporsmalForm} style={ghostBtnStyle}>{t.cancel}</button>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setLeggerTilSporsmal(true)} style={ghostBtnStyle}>{t.sporsmalAddButton}</button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

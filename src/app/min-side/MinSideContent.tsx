@@ -15,6 +15,7 @@ import {
   type KursInnhold,
   type KursModulCover,
   type KursModul,
+  type KursSporsmal,
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -1151,6 +1152,58 @@ function KursInnholdBlokk({ blokk }: { blokk: KursInnhold }) {
   );
 }
 
+function SporsmalKomponent({ sporsmal, riktig, onRiktig, t }: {
+  sporsmal: KursSporsmal; riktig: boolean; onRiktig: () => void; t: Dictionary["minSide"]["kurs"];
+}) {
+  const [valgtFeil, setValgtFeil] = useState<number | null>(null);
+
+  function velg(i: number) {
+    if (riktig) return;
+    if (i === sporsmal.riktig_svar) {
+      setValgtFeil(null);
+      onRiktig();
+    } else {
+      setValgtFeil(i);
+    }
+  }
+
+  return (
+    <div style={{ backgroundColor: "rgba(255,255,255,0.03)", border: `1px solid ${riktig ? "rgba(51,211,196,0.3)" : "rgba(255,255,255,0.08)"}`, borderRadius: "10px", padding: "16px 18px" }}>
+      <p style={{ fontSize: "14px", fontWeight: 600, marginBottom: "10px" }}>{sporsmal.sporsmal}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+        {sporsmal.alternativer.map((alt, i) => {
+          const erRiktigValgt = riktig && i === sporsmal.riktig_svar;
+          const erFeilValgt = !riktig && valgtFeil === i;
+          return (
+            <button
+              key={i}
+              onClick={() => velg(i)}
+              disabled={riktig}
+              style={{
+                textAlign: "left" as const, padding: "10px 12px", borderRadius: "8px",
+                border: erRiktigValgt ? "1px solid #33D3C4" : erFeilValgt ? "1px solid #D94F4F" : "1px solid rgba(255,255,255,0.1)",
+                backgroundColor: erRiktigValgt ? "rgba(51,211,196,0.1)" : erFeilValgt ? "rgba(217,79,79,0.1)" : "rgba(255,255,255,0.03)",
+                color: erRiktigValgt ? "#33D3C4" : erFeilValgt ? "#D94F4F" : "rgba(255,255,255,0.8)",
+                fontSize: "13px", cursor: riktig ? "default" : "pointer",
+              }}
+            >
+              {alt}
+            </button>
+          );
+        })}
+      </div>
+      {riktig && sporsmal.forklaring && (
+        <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "10px", marginBottom: 0 }}>✓ {sporsmal.forklaring}</p>
+      )}
+      {!riktig && valgtFeil !== null && (
+        <p style={{ color: "#FF6B4A", fontSize: "13px", marginTop: "10px", marginBottom: 0 }}>
+          {t.sporsmalFeilPrefix} {sporsmal.forklaring}
+        </p>
+      )}
+    </div>
+  );
+}
+
 function KursSection({ speakerteam, moduler, onChanged, dict, locale }: { speakerteam: SpeakerTeam[]; moduler: KursModul[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.kurs;
   const dateLocale = locale === "en" ? "en-GB" : "no-NO";
@@ -1163,11 +1216,34 @@ function KursSection({ speakerteam, moduler, onChanged, dict, locale }: { speake
   const gjeldendeModul = selected ? moduler.find(m => !selected.fullforte_moduler.includes(m.id)) ?? null : null;
   const [innhold, setInnhold] = useState<KursInnhold[]>([]);
   const [cover, setCover] = useState<KursModulCover | null>(null);
+  const [sporsmal, setSporsmal] = useState<KursSporsmal[]>([]);
   const [bekreftet, setBekreftet] = useState(false);
+  // Riktig-status per spørsmål-id -- true kun når det er svart RIKTIG. Feil
+  // svar nullstiller ikke de andre spørsmålene, og et spørsmål kan besvares
+  // på nytt til det blir riktig (ikke låst etter første forsøk).
+  const [riktigSvart, setRiktigSvart] = useState<Record<string, boolean>>({});
 
-  // Nullstill avkrysningen når speaker eller modul endres, slik at den faktisk
-  // må bekreftes på nytt for HVER modul — ikke bare klikkes én gang totalt.
-  useEffect(() => { setBekreftet(false); }, [selected?.id, gjeldendeModul?.id]);
+  // Nullstill avkrysning/svar når speaker eller modul endres, slik at det
+  // faktisk må gjøres på nytt for HVER modul — ikke bare klikkes/svares én
+  // gang totalt.
+  useEffect(() => { setBekreftet(false); setRiktigSvart({}); }, [selected?.id, gjeldendeModul?.id]);
+
+  useEffect(() => {
+    if (!gjeldendeModul) { setSporsmal([]); return; }
+    let avbrutt = false;
+    supabase
+      .from("kurs_sporsmal")
+      .select("*")
+      .eq("modul_id", gjeldendeModul.id)
+      .eq("sprak", locale)
+      .order("rekkefolge", { ascending: true })
+      .then(({ data }) => { if (!avbrutt) setSporsmal(data ?? []); });
+    return () => { avbrutt = true; };
+  }, [gjeldendeModul?.id, locale]);
+
+  const kanGaVidere = sporsmal.length > 0
+    ? sporsmal.every(s => riktigSvart[s.id])
+    : bekreftet;
 
   // Innholdet for modulen speakeren står på nå -- vises før "Neste modul",
   // slik at bekreftelsen faktisk betyr at de har lest/sett noe, ikke bare
@@ -1254,11 +1330,25 @@ function KursSection({ speakerteam, moduler, onChanged, dict, locale }: { speake
                   {innhold.map((b) => <KursInnholdBlokk key={b.id} blokk={b} />)}
                 </div>
               )}
-              <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "16px", fontSize: "14px", color: "rgba(255,255,255,0.7)", cursor: "pointer" }}>
-                <input type="checkbox" checked={bekreftet} onChange={(e) => setBekreftet(e.target.checked)} style={{ marginTop: "3px" }} />
-                {t.confirmCheckbox}
-              </label>
-              <button onClick={advance} disabled={!bekreftet} style={{ ...tealBtnStyle, opacity: bekreftet ? 1 : 0.4, cursor: bekreftet ? "pointer" : "not-allowed" }}>{t.nextModuleButton}</button>
+              {sporsmal.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "16px" }}>
+                  {sporsmal.map(s => (
+                    <SporsmalKomponent
+                      key={s.id}
+                      sporsmal={s}
+                      riktig={!!riktigSvart[s.id]}
+                      onRiktig={() => setRiktigSvart(prev => ({ ...prev, [s.id]: true }))}
+                      t={t}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", marginBottom: "16px", fontSize: "14px", color: "rgba(255,255,255,0.7)", cursor: "pointer" }}>
+                  <input type="checkbox" checked={bekreftet} onChange={(e) => setBekreftet(e.target.checked)} style={{ marginTop: "3px" }} />
+                  {t.confirmCheckbox}
+                </label>
+              )}
+              <button onClick={advance} disabled={!kanGaVidere} style={{ ...tealBtnStyle, opacity: kanGaVidere ? 1 : 0.4, cursor: kanGaVidere ? "pointer" : "not-allowed" }}>{t.nextModuleButton}</button>
             </>
           )}
         </div>

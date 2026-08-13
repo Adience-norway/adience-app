@@ -164,7 +164,7 @@ const no: {
     };
     kurs: {
       emptyState: string; selectSpeaker: string; certifiedPrefix: string; nextModuleButton: string;
-      confirmCheckbox: string;
+      confirmCheckbox: string; sporsmalFeilPrefix: string;
     };
     sertifikater: {
       emptyState: string; certifiedPrefix: string; downloadCert: string;
@@ -686,6 +686,7 @@ const no: {
       certifiedPrefix: "✓ Sertifisert",
       nextModuleButton: "Fullfør neste modul",
       confirmCheckbox: "Jeg har lest og forstått innholdet i denne modulen.",
+      sporsmalFeilPrefix: "Ikke helt riktig. Tenk på dette:",
     },
     sertifikater: {
       emptyState: "Ingen sertifiserte speakere ennå — fullfør kursmodulene under «Kursmoduler».",
@@ -1008,6 +1009,13 @@ const no: {
       aiPromptPlaceholder: "Beskriv motivet, f.eks. «en speaker og lydtekniker samarbeider foran en mikser i en arena»",
       aiGenerateButton: "Generer bilde",
       aiGenerating: "Genererer …",
+      sporsmalTitle: "Multiple choice-spørsmål",
+      sporsmalHelpText: "Spørsmål lytteren må svare riktig på for å gå videre til neste modul. Feil svar gir veiledning, riktig svar gir forklaring.",
+      sporsmalPlaceholder: "Skriv spørsmålet …",
+      sporsmalAlternativPlaceholder: "Alternativ",
+      sporsmalLeggTilAlternativ: "+ Alternativ",
+      sporsmalForklaringPlaceholder: "Forklaring av riktig svar (vises som veiledning ved feil svar, og bekreftelse ved riktig svar)",
+      sporsmalAddButton: "+ Nytt spørsmål",
       modulerTitle: "Moduler",
       modulerHelpText: "Dra for å omorganisere, endre navn direkte i feltene, eller legg til en helt ny modul.",
       modulerAddButton: "+ Ny modul",
