@@ -12,6 +12,7 @@ import {
   type SpeakerTeam,
   type Abonnement,
   type PilotPeriode,
+  type KursInnhold,
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -1100,11 +1101,54 @@ function SpeakerteamSection({
 
 /* ─── 5. KURSMODULER ─── */
 
+function youtubeEmbedUrl(url: string): string | null {
+  const watch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
+  return watch ? `https://www.youtube.com/embed/${watch[1]}` : null;
+}
+
+function KursInnholdBlokk({ blokk }: { blokk: KursInnhold }) {
+  if (blokk.type === "tekst") {
+    return <p style={{ fontSize: "15px", lineHeight: 1.7, color: "rgba(255,255,255,0.8)", whiteSpace: "pre-wrap" as const, margin: 0 }}>{blokk.innhold}</p>;
+  }
+  if (blokk.type === "bilde") {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={blokk.innhold} alt="" style={{ maxWidth: "100%", borderRadius: "8px", display: "block" }} />;
+  }
+  if (blokk.type === "lyd") {
+    return <audio controls src={blokk.innhold} style={{ width: "100%" }} />;
+  }
+  const embed = youtubeEmbedUrl(blokk.innhold);
+  return embed ? (
+    <div style={{ position: "relative", paddingTop: "56.25%" }}>
+      <iframe src={embed} allowFullScreen style={{ position: "absolute", inset: 0, width: "100%", height: "100%", border: "none", borderRadius: "8px" }} />
+    </div>
+  ) : (
+    <video controls src={blokk.innhold} style={{ width: "100%", borderRadius: "8px" }} />
+  );
+}
+
 function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: SpeakerTeam[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.kurs;
   const dateLocale = locale === "en" ? "en-GB" : "no-NO";
   const [selectedId, setSelectedId] = useState<string>(speakerteam[0]?.id ?? "");
   const selected = speakerteam.find((s) => s.id === selectedId) ?? null;
+  const [innhold, setInnhold] = useState<KursInnhold[]>([]);
+
+  // Innholdet for modulen speakeren står på nå (kurs_progresjon peker på
+  // NESTE u-fullførte modul) — vises før "Neste modul", slik at bekreftelsen
+  // faktisk betyr at de har lest/sett noe, ikke bare klikket blindt videre.
+  useEffect(() => {
+    if (!selected || selected.sertifisert) { setInnhold([]); return; }
+    let avbrutt = false;
+    supabase
+      .from("kurs_innhold")
+      .select("*")
+      .eq("modul_index", selected.kurs_progresjon)
+      .eq("sprak", locale)
+      .order("rekkefolge", { ascending: true })
+      .then(({ data }) => { if (!avbrutt) setInnhold(data ?? []); });
+    return () => { avbrutt = true; };
+  }, [selected?.id, selected?.kurs_progresjon, selected?.sertifisert, locale]);
 
   async function advance() {
     if (!selected) return;
@@ -1149,7 +1193,14 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
           {selected.sertifisert ? (
             <p style={{ color: "#33D3C4", fontSize: "14px" }}>{t.certifiedPrefix} {selected.sertifikat_dato && new Date(selected.sertifikat_dato).toLocaleDateString(dateLocale)}</p>
           ) : (
-            <button onClick={advance} style={tealBtnStyle}>{t.nextModuleButton}</button>
+            <>
+              {innhold.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "16px", margin: "20px 0", padding: "20px", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
+                  {innhold.map((b) => <KursInnholdBlokk key={b.id} blokk={b} />)}
+                </div>
+              )}
+              <button onClick={advance} style={tealBtnStyle}>{t.nextModuleButton}</button>
+            </>
           )}
         </div>
       )}

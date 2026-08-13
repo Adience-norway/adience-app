@@ -202,6 +202,7 @@ const no: {
     detailPanel: Record<string, string>;
     addArenaModal: Record<string, string>;
     logoUploadField: Record<string, string>;
+    kursproduksjon: Record<string, string>;
   };
   cast: {
     nav: { blog: string; backToHome: string };
@@ -771,6 +772,7 @@ const no: {
       searchButton: "Søk",
       standardCarouselLink: "Standard infokarusell ↓",
       adminManagerLink: "Administratorer ↓",
+      kursproduksjonLink: "Kursproduksjon ↓",
       refreshButton: "↻ Oppdater",
       newArenaButton: "+ Ny arena",
       loadingData: "Laster data…",
@@ -979,6 +981,30 @@ const no: {
       removeSelected: "Fjern valgt fil",
       errorType: "Kun PNG, JPEG, SVG og WebP er tillatt.",
       errorSize: "Filen er for stor. Maks 2 MB.",
+    },
+    kursproduksjon: {
+      title: "Kursproduksjon",
+      helpText: "Bygg innholdet i speakerkurset — tekst, bilder, lyd og video, per modul og språk. Dette vises for arena-eiere når de går gjennom kursmodulene på Min side.",
+      moduleLabel: "MODUL",
+      languageLabel: "SPRÅK",
+      emptyState: "Ingen innholdsblokker i denne modulen ennå.",
+      addTekst: "+ Tekst",
+      addBilde: "+ Bilde",
+      addLyd: "+ Lyd",
+      addVideo: "+ Video",
+      tekstPlaceholder: "Skriv innholdet …",
+      urlPlaceholder: "Lim inn lenke (f.eks. YouTube) …",
+      urlOrUpload: "…eller lim inn en lenke i stedet:",
+      uploadLabel: "Velg fil",
+      uploading: "Laster opp…",
+      save: "Lagre",
+      cancel: "Avbryt",
+      moveUp: "↑",
+      moveDown: "↓",
+      delete: "Slett",
+      confirmDelete: "Slette denne innholdsblokken?",
+      errorUpload: "Opplasting feilet.",
+      errorGeneric: "Noe gikk galt. Prøv igjen.",
     },
   },
   cast: {

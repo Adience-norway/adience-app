@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Session } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement } from "@/lib/supabase";
+import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { HoldmusikkCard } from "@/components/HoldmusikkCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -334,6 +334,12 @@ function Dashboard({ dict, locale }: { dict: Dictionary; locale: Locale }) {
             >
               {t.adminManagerLink}
             </button>
+            <button
+              onClick={() => document.getElementById("kursproduksjon")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+              style={ghostBtnStyle}
+            >
+              {t.kursproduksjonLink}
+            </button>
             <button onClick={fetchData} style={ghostBtnStyle}>{t.refreshButton}</button>
             <button onClick={() => setShowAddModal(true)} style={outlineCoralBtnStyle}>{t.newArenaButton}</button>
           </div>
@@ -379,6 +385,10 @@ function Dashboard({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 
         <div id="administratorer" style={{ scrollMarginTop: "20px" }}>
           <AdminManagerSeksjon dict={dict} locale={locale} />
+        </div>
+
+        <div id="kursproduksjon" style={{ scrollMarginTop: "20px" }}>
+          <KursproduksjonSeksjon dict={dict} />
         </div>
       </div>
 
@@ -748,6 +758,207 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─── KURSPRODUKSJON ─── */
+
+const KURS_MEDIA_ACCEPT: Record<KursInnholdType, string> = {
+  tekst: "",
+  bilde: "image/*",
+  lyd: "audio/*",
+  video: "video/*",
+};
+
+function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
+  const t = dict.admin.kursproduksjon;
+  const kursModuler = dict.minSide.kurs.modules;
+  const [modulIndex, setModulIndex] = useState(0);
+  const [sprak, setSprak] = useState<"no" | "en">("no");
+  const [blokker, setBlokker] = useState<KursInnhold[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [leggerTil, setLeggerTil] = useState<KursInnholdType | null>(null);
+  const [tekstVerdi, setTekstVerdi] = useState("");
+  const [urlVerdi, setUrlVerdi] = useState("");
+  const [lasterOpp, setLasterOpp] = useState(false);
+  const [feil, setFeil] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const fetchBlokker = useCallback(async () => {
+    setLoading(true);
+    const { data } = await supabase
+      .from("kurs_innhold")
+      .select("*")
+      .eq("modul_index", modulIndex)
+      .eq("sprak", sprak)
+      .order("rekkefolge", { ascending: true });
+    setBlokker(data ?? []);
+    setLoading(false);
+  }, [modulIndex, sprak]);
+
+  useEffect(() => { fetchBlokker(); }, [fetchBlokker]);
+
+  function resetLeggTil() {
+    setLeggerTil(null);
+    setTekstVerdi("");
+    setUrlVerdi("");
+    setFeil("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function lagreTekst() {
+    if (!tekstVerdi.trim()) return;
+    const nesteRekkefolge = (blokker.at(-1)?.rekkefolge ?? -1) + 1;
+    const { error } = await supabase.from("kurs_innhold").insert({
+      modul_index: modulIndex, sprak, rekkefolge: nesteRekkefolge, type: "tekst", innhold: tekstVerdi.trim(),
+    });
+    if (error) { setFeil(t.errorGeneric); return; }
+    resetLeggTil();
+    fetchBlokker();
+  }
+
+  async function lagreMedia(type: KursInnholdType, file: File | null) {
+    setFeil("");
+    const nesteRekkefolge = (blokker.at(-1)?.rekkefolge ?? -1) + 1;
+    let innhold = urlVerdi.trim();
+    if (!innhold && file) {
+      setLasterOpp(true);
+      const ext = file.name.split(".").pop() ?? "dat";
+      const path = `${modulIndex}/${sprak}/${type}-${Date.now()}.${ext}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("kurs-media")
+        .upload(path, file, { contentType: file.type || undefined });
+      setLasterOpp(false);
+      if (uploadError || !uploadData) { setFeil(t.errorUpload); return; }
+      innhold = supabase.storage.from("kurs-media").getPublicUrl(uploadData.path).data.publicUrl;
+    }
+    if (!innhold) return;
+    const { error } = await supabase.from("kurs_innhold").insert({
+      modul_index: modulIndex, sprak, rekkefolge: nesteRekkefolge, type, innhold,
+    });
+    if (error) { setFeil(t.errorGeneric); return; }
+    resetLeggTil();
+    fetchBlokker();
+  }
+
+  async function slett(id: string) {
+    if (!confirm(t.confirmDelete)) return;
+    await supabase.from("kurs_innhold").delete().eq("id", id);
+    fetchBlokker();
+  }
+
+  async function flytt(blokk: KursInnhold, retning: -1 | 1) {
+    const idx = blokker.findIndex(b => b.id === blokk.id);
+    const naboIdx = idx + retning;
+    if (naboIdx < 0 || naboIdx >= blokker.length) return;
+    const nabo = blokker[naboIdx];
+    await Promise.all([
+      supabase.from("kurs_innhold").update({ rekkefolge: nabo.rekkefolge }).eq("id", blokk.id),
+      supabase.from("kurs_innhold").update({ rekkefolge: blokk.rekkefolge }).eq("id", nabo.id),
+    ]);
+    fetchBlokker();
+  }
+
+  return (
+    <div style={{ marginTop: "16px" }}>
+      <h2 style={{ ...pageHeadingStyle, fontSize: "20px", marginBottom: "8px" }}>{t.title}</h2>
+      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "20px", lineHeight: 1.6, maxWidth: "640px" }}>
+        {t.helpText}
+      </p>
+      <div style={cardStyle}>
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" as const, marginBottom: "24px" }}>
+          <div style={{ flex: 1, minWidth: "220px" }}>
+            <label style={fieldLabelStyle}>{t.moduleLabel}</label>
+            <select value={modulIndex} onChange={e => { setModulIndex(Number(e.target.value)); resetLeggTil(); }} style={inputStyle}>
+              {kursModuler.map((navn, i) => <option key={i} value={i}>{i + 1}. {navn}</option>)}
+            </select>
+          </div>
+          <div style={{ width: "160px" }}>
+            <label style={fieldLabelStyle}>{t.languageLabel}</label>
+            <select value={sprak} onChange={e => { setSprak(e.target.value as "no" | "en"); resetLeggTil(); }} style={inputStyle}>
+              <option value="no">Norsk</option>
+              <option value="en">English</option>
+            </select>
+          </div>
+        </div>
+
+        {loading ? null : blokker.length === 0 ? (
+          <div style={{ ...emptyStyle, marginBottom: "20px" }}>{t.emptyState}</div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
+            {blokker.map((b, i) => (
+              <div key={b.id} style={{ display: "flex", alignItems: "flex-start", gap: "12px", backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "8px", padding: "12px 14px" }}>
+                <span style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "10px", color: "rgba(255,255,255,0.3)", textTransform: "uppercase" as const, flexShrink: 0, marginTop: "3px", width: "42px" }}>{b.type}</span>
+                <div style={{ flex: 1, fontSize: "14px", color: "rgba(255,255,255,0.8)", wordBreak: "break-word" as const }}>
+                  {b.type === "tekst" ? b.innhold : (
+                    <a href={b.innhold} target="_blank" rel="noopener noreferrer" style={{ color: "#33D3C4" }}>{b.innhold}</a>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: "4px", flexShrink: 0 }}>
+                  <button onClick={() => flytt(b, -1)} disabled={i === 0} style={{ ...ghostBtnStyle, padding: "6px 10px", opacity: i === 0 ? 0.3 : 1 }}>{t.moveUp}</button>
+                  <button onClick={() => flytt(b, 1)} disabled={i === blokker.length - 1} style={{ ...ghostBtnStyle, padding: "6px 10px", opacity: i === blokker.length - 1 ? 0.3 : 1 }}>{t.moveDown}</button>
+                  <button onClick={() => slett(b.id)} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>{t.delete}</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {leggerTil === null ? (
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" as const }}>
+            <button onClick={() => setLeggerTil("tekst")} style={ghostBtnStyle}>{t.addTekst}</button>
+            <button onClick={() => setLeggerTil("bilde")} style={ghostBtnStyle}>{t.addBilde}</button>
+            <button onClick={() => setLeggerTil("lyd")} style={ghostBtnStyle}>{t.addLyd}</button>
+            <button onClick={() => setLeggerTil("video")} style={ghostBtnStyle}>{t.addVideo}</button>
+          </div>
+        ) : leggerTil === "tekst" ? (
+          <div>
+            <textarea
+              value={tekstVerdi}
+              onChange={e => setTekstVerdi(e.target.value)}
+              placeholder={t.tekstPlaceholder}
+              rows={4}
+              style={{ ...inputStyle, resize: "vertical" as const, fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+            />
+            {feil && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{feil}</p>}
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button onClick={lagreTekst} style={tealBtnStyle}>{t.save}</button>
+              <button onClick={resetLeggTil} style={ghostBtnStyle}>{t.cancel}</button>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept={KURS_MEDIA_ACCEPT[leggerTil]}
+              onChange={() => setUrlVerdi("")}
+              style={{ ...inputStyle, padding: "10px" }}
+              disabled={lasterOpp}
+            />
+            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", margin: "10px 0 4px" }}>{t.urlOrUpload}</p>
+            <input
+              value={urlVerdi}
+              onChange={e => setUrlVerdi(e.target.value)}
+              placeholder={t.urlPlaceholder}
+              style={inputStyle}
+              disabled={lasterOpp}
+            />
+            {feil && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "8px" }}>{feil}</p>}
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+              <button
+                onClick={() => lagreMedia(leggerTil, fileInputRef.current?.files?.[0] ?? null)}
+                disabled={lasterOpp}
+                style={tealBtnStyle}
+              >
+                {lasterOpp ? t.uploading : t.save}
+              </button>
+              <button onClick={resetLeggTil} style={ghostBtnStyle} disabled={lasterOpp}>{t.cancel}</button>
+            </div>
           </div>
         )}
       </div>

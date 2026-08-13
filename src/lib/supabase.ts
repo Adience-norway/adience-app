@@ -102,6 +102,18 @@ export type SpeakerTeam = {
   opprettet: string;
 };
 
+export type KursInnholdType = "tekst" | "bilde" | "lyd" | "video";
+
+export type KursInnhold = {
+  id: string;
+  modul_index: number;
+  sprak: "no" | "en";
+  rekkefolge: number;
+  type: KursInnholdType;
+  innhold: string;
+  opprettet: string;
+};
+
 export type AbonnementStatus = "lead" | "demo_forespurt" | "pilot_aktiv" | "aktiv" | "avsluttet";
 
 export type Abonnement = {
