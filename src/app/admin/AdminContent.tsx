@@ -787,6 +787,8 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   const [lasterOpp, setLasterOpp] = useState(false);
   const [feil, setFeil] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [genererer, setGenererer] = useState(false);
 
   const fetchBlokker = useCallback(async () => {
     setLoading(true);
@@ -843,6 +845,30 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
     if (error) { setFeil(t.errorGeneric); return; }
     resetLeggTil();
     fetchBlokker();
+  }
+
+  async function genererMedAI() {
+    if (!aiPrompt.trim()) return;
+    setFeil("");
+    setGenererer(true);
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) { setFeil(t.errorGeneric); return; }
+      const res = await fetch("/api/generate-kurs-bilde", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ prompt: aiPrompt.trim(), modulIndex, sprak }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) { setFeil(data.error ?? t.errorGeneric); return; }
+      resetLeggTil();
+      fetchBlokker();
+    } catch {
+      setFeil(t.errorGeneric);
+    } finally {
+      setGenererer(false);
+    }
   }
 
   async function slett(id: string) {
@@ -959,6 +985,27 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
               </button>
               <button onClick={resetLeggTil} style={ghostBtnStyle} disabled={lasterOpp}>{t.cancel}</button>
             </div>
+
+            {leggerTil === "bilde" && (
+              <div style={{ marginTop: "20px", paddingTop: "20px", borderTop: "1px solid rgba(255,255,255,0.08)" }}>
+                <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginBottom: "8px" }}>{t.aiOr}</p>
+                <textarea
+                  value={aiPrompt}
+                  onChange={e => setAiPrompt(e.target.value)}
+                  placeholder={t.aiPromptPlaceholder}
+                  rows={2}
+                  style={{ ...inputStyle, resize: "vertical" as const, fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+                  disabled={genererer}
+                />
+                <button
+                  onClick={genererMedAI}
+                  disabled={genererer || !aiPrompt.trim()}
+                  style={{ ...tealBtnStyle, marginTop: "10px", opacity: genererer || !aiPrompt.trim() ? 0.5 : 1 }}
+                >
+                  {genererer ? t.aiGenerating : t.aiGenerateButton}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </div>

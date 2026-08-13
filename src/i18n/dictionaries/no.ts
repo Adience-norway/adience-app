@@ -1005,6 +1005,10 @@ const no: {
       confirmDelete: "Slette denne innholdsblokken?",
       errorUpload: "Opplasting feilet.",
       errorGeneric: "Noe gikk galt. Prøv igjen.",
+      aiOr: "…eller generer et illustrasjonsbilde med AI:",
+      aiPromptPlaceholder: "Beskriv motivet, f.eks. «en speaker og lydtekniker samarbeider foran en mikser i en arena»",
+      aiGenerateButton: "Generer bilde",
+      aiGenerating: "Genererer …",
     },
   },
   cast: {

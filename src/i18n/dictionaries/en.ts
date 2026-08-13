@@ -785,6 +785,10 @@ const en: Dictionary = {
       confirmDelete: "Delete this content block?",
       errorUpload: "Upload failed.",
       errorGeneric: "Something went wrong. Try again.",
+      aiOr: "…or generate an illustration with AI:",
+      aiPromptPlaceholder: "Describe the scene, e.g. \"a speaker and sound engineer working together at a mixer in a venue\"",
+      aiGenerateButton: "Generate image",
+      aiGenerating: "Generating …",
     },
   },
   cast: {
