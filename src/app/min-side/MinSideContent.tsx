@@ -13,6 +13,7 @@ import {
   type Abonnement,
   type PilotPeriode,
   type KursInnhold,
+  type KursModulCover,
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -1150,6 +1151,7 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
   const [selectedId, setSelectedId] = useState<string>(speakerteam[0]?.id ?? "");
   const selected = speakerteam.find((s) => s.id === selectedId) ?? null;
   const [innhold, setInnhold] = useState<KursInnhold[]>([]);
+  const [cover, setCover] = useState<KursModulCover | null>(null);
   const [bekreftet, setBekreftet] = useState(false);
 
   // Nullstill avkrysningen når speaker eller modul endres, slik at den faktisk
@@ -1171,6 +1173,19 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
       .then(({ data }) => { if (!avbrutt) setInnhold(data ?? []); });
     return () => { avbrutt = true; };
   }, [selected?.id, selected?.kurs_progresjon, selected?.sertifisert, locale]);
+
+  // Modulillustrasjonen er felles for alle språk, uavhengig av `innhold` over.
+  useEffect(() => {
+    if (!selected || selected.sertifisert) { setCover(null); return; }
+    let avbrutt = false;
+    supabase
+      .from("kurs_modul_cover")
+      .select("*")
+      .eq("modul_index", selected.kurs_progresjon)
+      .maybeSingle()
+      .then(({ data }) => { if (!avbrutt) setCover(data ?? null); });
+    return () => { avbrutt = true; };
+  }, [selected?.id, selected?.kurs_progresjon, selected?.sertifisert]);
 
   async function advance() {
     if (!selected) return;
@@ -1216,6 +1231,10 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
             <p style={{ color: "#33D3C4", fontSize: "14px" }}>{t.certifiedPrefix} {selected.sertifikat_dato && new Date(selected.sertifikat_dato).toLocaleDateString(dateLocale)}</p>
           ) : (
             <>
+              {cover && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={cover.bilde_url} alt="" style={{ width: "100%", aspectRatio: "3 / 2", objectFit: "cover", borderRadius: "10px", marginTop: "20px", display: "block" }} />
+              )}
               {innhold.length > 0 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: "16px", margin: "20px 0", padding: "20px", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
                   {innhold.map((b) => <KursInnholdBlokk key={b.id} blokk={b} />)}

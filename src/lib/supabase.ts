@@ -114,6 +114,13 @@ export type KursInnhold = {
   opprettet: string;
 };
 
+export type KursModulCover = {
+  modul_index: number;
+  bilde_url: string;
+  kilde: "ai" | "opplastet";
+  oppdatert: string;
+};
+
 export type AbonnementStatus = "lead" | "demo_forespurt" | "pilot_aktiv" | "aktiv" | "avsluttet";
 
 export type Abonnement = {

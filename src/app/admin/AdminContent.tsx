@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Session } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType } from "@/lib/supabase";
+import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType, type KursModulCover } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { HoldmusikkCard } from "@/components/HoldmusikkCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -790,6 +790,87 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [genererer, setGenererer] = useState(false);
 
+  // Modul-illustrasjoner (ett bilde per modul, uavhengig av språk) -- adskilt
+  // fra de vanlige innholdsblokkene, siden dette er ett fast "toppbilde" per
+  // modul som kan genereres automatisk for alle på én gang uten at noen må
+  // tenke ut et motiv, men fortsatt overstyres med eget opplastet bilde eller
+  // egen prompt per modul.
+  const [covers, setCovers] = useState<KursModulCover[]>([]);
+  const [genererAlleCovers_, setGenererAlleCovers_] = useState(false);
+  const [genererCoverIndex, setGenererCoverIndex] = useState<number | null>(null);
+  const [coverPrompt, setCoverPrompt] = useState("");
+  const [lasterOppCover, setLasterOppCover] = useState(false);
+  const coverFileInputRef = useRef<HTMLInputElement>(null);
+  const cover = covers.find(c => c.modul_index === modulIndex) ?? null;
+
+  const fetchCovers = useCallback(async () => {
+    const { data } = await supabase.from("kurs_modul_cover").select("*").order("modul_index");
+    setCovers(data ?? []);
+  }, []);
+
+  useEffect(() => { fetchCovers(); }, [fetchCovers]);
+
+  async function genererCoverForModul(idx: number, promptOverride?: string) {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) return false;
+    const res = await fetch("/api/generate-kurs-modul-cover", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ modulIndex: idx, prompt: promptOverride }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) { setFeil(data.error ?? t.errorGeneric); return false; }
+    return true;
+  }
+
+  async function handleGenererCoverManuelt() {
+    setFeil("");
+    setGenererCoverIndex(modulIndex);
+    const ok = await genererCoverForModul(modulIndex, coverPrompt.trim() || undefined);
+    setGenererCoverIndex(null);
+    if (ok) { setCoverPrompt(""); fetchCovers(); }
+  }
+
+  async function handleRegenererCover() {
+    setFeil("");
+    setGenererCoverIndex(modulIndex);
+    const ok = await genererCoverForModul(modulIndex);
+    setGenererCoverIndex(null);
+    if (ok) fetchCovers();
+  }
+
+  async function handleGenererAlleCovers() {
+    setFeil("");
+    setGenererAlleCovers_(true);
+    for (let idx = 0; idx < kursModuler.length; idx++) {
+      if (covers.some(c => c.modul_index === idx)) continue; // ikke overskriv eksisterende uten at noen ber om det
+      await genererCoverForModul(idx);
+    }
+    setGenererAlleCovers_(false);
+    fetchCovers();
+  }
+
+  async function handleLastOppCover(file: File | null) {
+    if (!file) return;
+    setFeil("");
+    setLasterOppCover(true);
+    const ext = file.name.split(".").pop() ?? "png";
+    const path = `covers/${modulIndex}-${Date.now()}.${ext}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("kurs-media")
+      .upload(path, file, { contentType: file.type || undefined });
+    if (uploadError || !uploadData) { setFeil(t.errorUpload); setLasterOppCover(false); return; }
+    const publicUrl = supabase.storage.from("kurs-media").getPublicUrl(uploadData.path).data.publicUrl;
+    const { error: upsertError } = await supabase
+      .from("kurs_modul_cover")
+      .upsert({ modul_index: modulIndex, bilde_url: publicUrl, kilde: "opplastet", oppdatert: new Date().toISOString() });
+    setLasterOppCover(false);
+    if (upsertError) { setFeil(t.errorGeneric); return; }
+    if (coverFileInputRef.current) coverFileInputRef.current.value = "";
+    fetchCovers();
+  }
+
   const fetchBlokker = useCallback(async () => {
     setLoading(true);
     const { data } = await supabase
@@ -895,6 +976,17 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
       <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "20px", lineHeight: 1.6, maxWidth: "640px" }}>
         {t.helpText}
       </p>
+
+      <div style={{ ...cardStyle, marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" as const }}>
+        <div>
+          <p style={{ fontWeight: 600, marginBottom: "4px" }}>{t.coversTitle}</p>
+          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>{t.coversHelpText}</p>
+        </div>
+        <button onClick={handleGenererAlleCovers} disabled={genererAlleCovers_} style={{ ...tealBtnStyle, opacity: genererAlleCovers_ ? 0.5 : 1, flexShrink: 0 }}>
+          {genererAlleCovers_ ? t.aiGenerating : t.coversGenerateAll}
+        </button>
+      </div>
+
       <div style={cardStyle}>
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" as const, marginBottom: "24px" }}>
           <div style={{ flex: 1, minWidth: "220px" }}>
@@ -909,6 +1001,61 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
               <option value="no">Norsk</option>
               <option value="en">English</option>
             </select>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" as const, marginBottom: "24px", padding: "16px", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
+          <div style={{ flexShrink: 0 }}>
+            {cover ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={cover.bilde_url} alt="" style={{ width: "160px", height: "107px", objectFit: "cover", borderRadius: "8px", display: "block" }} />
+            ) : (
+              <div style={{ width: "160px", height: "107px", borderRadius: "8px", backgroundColor: "rgba(255,255,255,0.05)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.25)", fontSize: "12px", textAlign: "center" as const }}>
+                {t.coverNone}
+              </div>
+            )}
+          </div>
+          <div style={{ flex: 1, minWidth: "260px" }}>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
+              {t.coverForModule} <strong style={{ color: "#fff" }}>{kursModuler[modulIndex]}</strong>
+            </p>
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" as const, marginBottom: "10px" }}>
+              <button
+                onClick={handleRegenererCover}
+                disabled={genererCoverIndex === modulIndex}
+                style={{ ...ghostBtnStyle, opacity: genererCoverIndex === modulIndex ? 0.5 : 1 }}
+              >
+                {genererCoverIndex === modulIndex ? t.aiGenerating : t.coverRegenerate}
+              </button>
+              <input
+                ref={coverFileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={e => handleLastOppCover(e.target.files?.[0] ?? null)}
+                disabled={lasterOppCover}
+                style={{ display: "none" }}
+                id="cover-file-input"
+              />
+              <button onClick={() => coverFileInputRef.current?.click()} disabled={lasterOppCover} style={{ ...ghostBtnStyle, opacity: lasterOppCover ? 0.5 : 1 }}>
+                {lasterOppCover ? t.uploading : t.coverUpload}
+              </button>
+            </div>
+            <div style={{ display: "flex", gap: "8px" }}>
+              <input
+                value={coverPrompt}
+                onChange={e => setCoverPrompt(e.target.value)}
+                placeholder={t.aiPromptPlaceholder}
+                style={{ ...inputStyle, fontSize: "13px" }}
+                disabled={genererCoverIndex === modulIndex}
+              />
+              <button
+                onClick={handleGenererCoverManuelt}
+                disabled={!coverPrompt.trim() || genererCoverIndex === modulIndex}
+                style={{ ...tealBtnStyle, flexShrink: 0, opacity: (!coverPrompt.trim() || genererCoverIndex === modulIndex) ? 0.5 : 1 }}
+              >
+                {t.coverFromPrompt}
+              </button>
+            </div>
           </div>
         </div>
 
