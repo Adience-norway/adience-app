@@ -96,9 +96,19 @@ export type SpeakerTeam = {
   etternavn: string | null;
   epost: string | null;
   rolle: string | null;
-  kurs_progresjon: number;
+  fullforte_moduler: string[];
   sertifisert: boolean;
   sertifikat_dato: string | null;
+  opprettet: string;
+};
+
+export type KursModul = {
+  id: string;
+  rekkefolge: number;
+  navn_no: string;
+  navn_en: string;
+  kort_no: string;
+  kort_en: string;
   opprettet: string;
 };
 
@@ -106,7 +116,7 @@ export type KursInnholdType = "tekst" | "bilde" | "lyd" | "video";
 
 export type KursInnhold = {
   id: string;
-  modul_index: number;
+  modul_id: string;
   sprak: "no" | "en";
   rekkefolge: number;
   type: KursInnholdType;
@@ -115,7 +125,7 @@ export type KursInnhold = {
 };
 
 export type KursModulCover = {
-  modul_index: number;
+  modul_id: string;
   bilde_url: string;
   kilde: "ai" | "opplastet";
   oppdatert: string;

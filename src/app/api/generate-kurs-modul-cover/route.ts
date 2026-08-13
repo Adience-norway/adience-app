@@ -15,7 +15,7 @@ const ERRORS: Record<Locale, {
     missingToken: "Mangler innloggingstoken.",
     invalidSession: "Ugyldig eller utløpt innlogging.",
     noAccess: "Du har ikke admin-tilgang til å gjøre dette.",
-    invalidModule: "Ugyldig modul.",
+    invalidModule: "Fant ikke modulen.",
     generateFailed: "Klarte ikke generere bildet.",
     uploadFailed: "Klarte ikke laste opp bildet.",
     saveFailed: "Bildet ble generert, men kunne ikke lagres.",
@@ -26,7 +26,7 @@ const ERRORS: Record<Locale, {
     missingToken: "Missing login token.",
     invalidSession: "Invalid or expired login.",
     noAccess: "You don't have admin access to do this.",
-    invalidModule: "Invalid module.",
+    invalidModule: "Couldn't find the module.",
     generateFailed: "Couldn't generate the image.",
     uploadFailed: "Couldn't upload the image.",
     saveFailed: "The image was generated, but couldn't be saved.",
@@ -34,7 +34,7 @@ const ERRORS: Record<Locale, {
 };
 
 // Fast stilprofil -- samme som /api/generate-kurs-bilde -- skaper visuell
-// helhet på tvers av alle fem modul-illustrasjonene.
+// helhet på tvers av alle modul-illustrasjonene.
 const STILPROFIL =
   "Editorial illustration for a sports/event-venue speaker training course. " +
   "Clean, modern, minimalist style. Color palette dominated by deep teal " +
@@ -42,23 +42,13 @@ const STILPROFIL =
   "dark background. Wide 3:2 header composition. No text, no logos, no " +
   "watermarks, no readable signage anywhere in the image.";
 
-// Standard-motiv per modul -- brukes når admin ikke selv skriver en prompt,
-// slik at "generer alle" fungerer uten at noen må tenke ut et motiv selv.
-const MODUL_MOTIV = [
-  "A diverse speaker team of three people wearing headsets, standing together in an empty stadium tunnel, looking out toward the pitch. A sense of camaraderie and teamwork.",
-  "A sound engineer's hands adjusting sliders on an audio mixing console, headphones resting nearby, a broadcast booth overlooking a sports arena bowl.",
-  "A stadium announcer speaking into a microphone with an energetic, blurred crowd in the background and a big screen visible. Live event atmosphere.",
-  "A calm safety briefing in an arena control room: a clipboard with a plan, a radio handset on the table. A sense of preparedness and responsibility.",
-  "A speaker team shaking hands after a successful broadcast, warm sunset light across empty stadium stands. A sense of accomplishment.",
-];
-
 export async function POST(req: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
-  const body = (await req.json()) as { modulIndex?: number; prompt?: string; locale?: string };
+  const body = (await req.json()) as { modulId?: string; prompt?: string; locale?: string };
   const locale: Locale = body.locale === "en" ? "en" : "no";
   const err = ERRORS[locale];
 
@@ -75,8 +65,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.missingToken }, { status: 401 });
   }
 
-  const modulIndex = body.modulIndex;
-  if (typeof modulIndex !== "number" || modulIndex < 0 || modulIndex > 4) {
+  const modulId = body.modulId;
+  if (!modulId) {
     return NextResponse.json({ error: err.invalidModule }, { status: 400 });
   }
 
@@ -98,17 +88,27 @@ export async function POST(req: NextRequest) {
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
+  const { data: modul } = await adminClient
+    .from("kurs_moduler")
+    .select("navn_no, kort_no")
+    .eq("id", modulId)
+    .single();
+  if (!modul) {
+    return NextResponse.json({ error: err.invalidModule }, { status: 404 });
+  }
+
   // Ingen egen prompt gitt -- hent modulens faktiske kursTekst og la Claude
-  // trekke ut et konkret visuelt motiv fra INNHOLDET, i stedet for å alltid
-  // falle tilbake på det samme faste, generiske motivet for modulen.
+  // trekke ut et konkret visuelt motiv fra INNHOLDET. Faller tilbake på
+  // modulens eget stikkord (kort_no) hvis det ikke finnes tekst ennå --
+  // ALDRI et fast, posisjonsbasert motiv, siden moduler nå kan omdøpes,
+  // omorganiseres og legges til fritt.
   let motiv = body.prompt?.trim();
   if (!motiv) {
     const { data: tekstBlokker } = await adminClient
       .from("kurs_innhold")
       .select("innhold")
-      .eq("modul_index", modulIndex)
+      .eq("modul_id", modulId)
       .eq("type", "tekst")
-      .in("sprak", ["no", "en"])
       .order("rekkefolge", { ascending: true });
     const kursTekst = (tekstBlokker ?? []).map((b) => b.innhold).join("\n\n");
 
@@ -128,10 +128,10 @@ export async function POST(req: NextRequest) {
         const avledet = textBlock?.type === "text" ? textBlock.text.trim() : "";
         if (avledet) motiv = avledet;
       } catch {
-        // Faller tilbake på standardmotivet under -- ikke kritisk.
+        // Faller tilbake under -- ikke kritisk.
       }
     }
-    if (!motiv) motiv = MODUL_MOTIV[modulIndex];
+    if (!motiv) motiv = modul.kort_no || modul.navn_no;
   }
 
   let b64: string;
@@ -158,7 +158,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: `${err.generateFailed} (${message})` }, { status: 502 });
   }
 
-  const path = `covers/${modulIndex}-${Date.now()}.png`;
+  const path = `covers/${modulId}-${Date.now()}.png`;
   const bytes = Buffer.from(b64, "base64");
   const { data: uploadData, error: uploadError } = await adminClient.storage
     .from("kurs-media")
@@ -170,7 +170,7 @@ export async function POST(req: NextRequest) {
 
   const { data: cover, error: upsertError } = await adminClient
     .from("kurs_modul_cover")
-    .upsert({ modul_index: modulIndex, bilde_url: publicUrl, kilde: "ai", oppdatert: new Date().toISOString() })
+    .upsert({ modul_id: modulId, bilde_url: publicUrl, kilde: "ai", oppdatert: new Date().toISOString() })
     .select("*")
     .single();
   if (upsertError || !cover) {

@@ -14,6 +14,7 @@ import {
   type PilotPeriode,
   type KursInnhold,
   type KursModulCover,
+  type KursModul,
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -1033,7 +1034,6 @@ function SpeakerteamSection({
   arenaId, arena, speakerteam, onChanged, dict, locale,
 }: { arenaId: string; arena: Arena; speakerteam: SpeakerTeam[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.speakerteam;
-  const kursModuler = dict.minSide.kurs.modules;
   const [showForm, setShowForm] = useState(false);
   const [fornavn, setFornavn] = useState("");
   const [etternavn, setEtternavn] = useState("");
@@ -1041,6 +1041,12 @@ function SpeakerteamSection({
   const [rolle, setRolle] = useState("");
   const [saving, setSaving] = useState(false);
   const [sletter, setSletter] = useState<string | null>(null);
+  const [moduler, setModuler] = useState<KursModul[]>([]);
+
+  useEffect(() => {
+    supabase.from("kurs_moduler").select("*").order("rekkefolge", { ascending: true })
+      .then(({ data }) => setModuler(data ?? []));
+  }, []);
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -1091,7 +1097,7 @@ function SpeakerteamSection({
                 <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
                 <td style={tdStyle}>{s.epost}</td>
                 <td style={tdStyle}>{s.rolle ?? "—"}</td>
-                <td style={tdStyle}>{s.kurs_progresjon} / {kursModuler.length}</td>
+                <td style={tdStyle}>{s.fullforte_moduler.length} / {moduler.length}</td>
                 <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
                 <td style={tdStyle}>
                   <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
@@ -1106,12 +1112,12 @@ function SpeakerteamSection({
 
       <div style={{ marginTop: "24px" }}>
         <h3 style={{ ...sectionHeadingStyle, marginBottom: "16px" }}>{dict.minSide.tabs.kurs}</h3>
-        <KursSection speakerteam={speakerteam} onChanged={onChanged} dict={dict} locale={locale} />
+        <KursSection speakerteam={speakerteam} moduler={moduler} onChanged={onChanged} dict={dict} locale={locale} />
       </div>
 
       <div style={{ marginTop: "24px" }}>
         <h3 style={{ ...sectionHeadingStyle, marginBottom: "16px" }}>{dict.minSide.tabs.sertifikater}</h3>
-        <SertifikaterSection arena={arena} speakerteam={speakerteam} dict={dict} locale={locale} />
+        <SertifikaterSection arena={arena} speakerteam={speakerteam} moduler={moduler} dict={dict} locale={locale} />
       </div>
     </div>
   );
@@ -1145,54 +1151,59 @@ function KursInnholdBlokk({ blokk }: { blokk: KursInnhold }) {
   );
 }
 
-function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: SpeakerTeam[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
+function KursSection({ speakerteam, moduler, onChanged, dict, locale }: { speakerteam: SpeakerTeam[]; moduler: KursModul[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.kurs;
   const dateLocale = locale === "en" ? "en-GB" : "no-NO";
   const [selectedId, setSelectedId] = useState<string>(speakerteam[0]?.id ?? "");
   const selected = speakerteam.find((s) => s.id === selectedId) ?? null;
+  // Gjeldende modul = første modul (i rekkefølge) speakeren IKKE har fullført
+  // ennå. Siden fullforte_moduler er en liste over modul-ID-er (ikke et
+  // tall), spiller det ingen rolle om admin har omorganisert modulene siden
+  // sist — dette forblir korrekt.
+  const gjeldendeModul = selected ? moduler.find(m => !selected.fullforte_moduler.includes(m.id)) ?? null : null;
   const [innhold, setInnhold] = useState<KursInnhold[]>([]);
   const [cover, setCover] = useState<KursModulCover | null>(null);
   const [bekreftet, setBekreftet] = useState(false);
 
   // Nullstill avkrysningen når speaker eller modul endres, slik at den faktisk
   // må bekreftes på nytt for HVER modul — ikke bare klikkes én gang totalt.
-  useEffect(() => { setBekreftet(false); }, [selected?.id, selected?.kurs_progresjon]);
+  useEffect(() => { setBekreftet(false); }, [selected?.id, gjeldendeModul?.id]);
 
-  // Innholdet for modulen speakeren står på nå (kurs_progresjon peker på
-  // NESTE u-fullførte modul) — vises før "Neste modul", slik at bekreftelsen
-  // faktisk betyr at de har lest/sett noe, ikke bare klikket blindt videre.
+  // Innholdet for modulen speakeren står på nå -- vises før "Neste modul",
+  // slik at bekreftelsen faktisk betyr at de har lest/sett noe, ikke bare
+  // klikket blindt videre.
   useEffect(() => {
-    if (!selected || selected.sertifisert) { setInnhold([]); return; }
+    if (!gjeldendeModul) { setInnhold([]); return; }
     let avbrutt = false;
     supabase
       .from("kurs_innhold")
       .select("*")
-      .eq("modul_index", selected.kurs_progresjon)
+      .eq("modul_id", gjeldendeModul.id)
       .eq("sprak", locale)
       .order("rekkefolge", { ascending: true })
       .then(({ data }) => { if (!avbrutt) setInnhold(data ?? []); });
     return () => { avbrutt = true; };
-  }, [selected?.id, selected?.kurs_progresjon, selected?.sertifisert, locale]);
+  }, [gjeldendeModul?.id, locale]);
 
   // Modulillustrasjonen er felles for alle språk, uavhengig av `innhold` over.
   useEffect(() => {
-    if (!selected || selected.sertifisert) { setCover(null); return; }
+    if (!gjeldendeModul) { setCover(null); return; }
     let avbrutt = false;
     supabase
       .from("kurs_modul_cover")
       .select("*")
-      .eq("modul_index", selected.kurs_progresjon)
+      .eq("modul_id", gjeldendeModul.id)
       .maybeSingle()
       .then(({ data }) => { if (!avbrutt) setCover(data ?? null); });
     return () => { avbrutt = true; };
-  }, [selected?.id, selected?.kurs_progresjon, selected?.sertifisert]);
+  }, [gjeldendeModul?.id]);
 
   async function advance() {
-    if (!selected) return;
-    const nextProgresjon = Math.min(t.modules.length, selected.kurs_progresjon + 1);
-    const sertifisert = nextProgresjon === t.modules.length;
+    if (!selected || !gjeldendeModul) return;
+    const nyeFullforte = [...selected.fullforte_moduler, gjeldendeModul.id];
+    const sertifisert = moduler.every(m => nyeFullforte.includes(m.id));
     await supabase.from("speakerteam").update({
-      kurs_progresjon: nextProgresjon,
+      fullforte_moduler: nyeFullforte,
       sertifisert,
       sertifikat_dato: sertifisert ? new Date().toISOString() : null,
     }).eq("id", selected.id);
@@ -1213,21 +1224,24 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
       {selected && (
         <div>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
-            {t.modules.map((modul, i) => (
-              <div key={modul} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                <div style={{
-                  width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
-                  display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700,
-                  backgroundColor: i < selected.kurs_progresjon ? "#33D3C4" : "rgba(255,255,255,0.08)",
-                  color: i < selected.kurs_progresjon ? "#073E46" : "rgba(255,255,255,0.35)",
-                }}>
-                  {i < selected.kurs_progresjon ? "✓" : i + 1}
+            {moduler.map((m, i) => {
+              const fullfort = selected.fullforte_moduler.includes(m.id);
+              return (
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{
+                    width: "24px", height: "24px", borderRadius: "50%", flexShrink: 0,
+                    display: "flex", alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700,
+                    backgroundColor: fullfort ? "#33D3C4" : "rgba(255,255,255,0.08)",
+                    color: fullfort ? "#073E46" : "rgba(255,255,255,0.35)",
+                  }}>
+                    {fullfort ? "✓" : i + 1}
+                  </div>
+                  <span style={{ fontSize: "14px", color: fullfort ? "#ffffff" : "rgba(255,255,255,0.4)" }}>{locale === "en" ? m.navn_en : m.navn_no}</span>
                 </div>
-                <span style={{ fontSize: "14px", color: i < selected.kurs_progresjon ? "#ffffff" : "rgba(255,255,255,0.4)" }}>{modul}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
-          {selected.sertifisert ? (
+          {selected.sertifisert || !gjeldendeModul ? (
             <p style={{ color: "#33D3C4", fontSize: "14px" }}>{t.certifiedPrefix} {selected.sertifikat_dato && new Date(selected.sertifikat_dato).toLocaleDateString(dateLocale)}</p>
           ) : (
             <>
@@ -1255,7 +1269,7 @@ function KursSection({ speakerteam, onChanged, dict, locale }: { speakerteam: Sp
 
 /* ─── 6. SERTIFIKATER ─── */
 
-function SertifikaterSection({ arena, speakerteam, dict, locale }: { arena: Arena | null; speakerteam: SpeakerTeam[]; dict: Dictionary; locale: Locale }) {
+function SertifikaterSection({ arena, speakerteam, moduler, dict, locale }: { arena: Arena | null; speakerteam: SpeakerTeam[]; moduler: KursModul[]; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.sertifikater;
   const dateLocale = locale === "en" ? "en-GB" : "no-NO";
   const sertifiserte = speakerteam.filter((s) => s.sertifisert);
@@ -1263,8 +1277,13 @@ function SertifikaterSection({ arena, speakerteam, dict, locale }: { arena: Aren
   function printCertificate(s: SpeakerTeam) {
     const win = window.open("", "_blank");
     if (!win) return;
-    const stikkordHtml = dict.minSide.kurs.stikkord
-      .map((punkt: string) => `<li style="margin-bottom:10px;padding-left:22px;position:relative;">
+    // Hentet direkte fra kurs_moduler (kort_no/kort_en), i stedet for en
+    // separat, fast liste -- ellers ville "hva du har lært" fort blitt
+    // feil/utdatert i det øyeblikket noen legger til, omdøper eller sletter
+    // en modul i produksjonsverktøyet.
+    const stikkordHtml = moduler
+      .map((m) => locale === "en" ? (m.kort_en || m.navn_en) : (m.kort_no || m.navn_no))
+      .map((punkt) => `<li style="margin-bottom:10px;padding-left:22px;position:relative;">
           <span style="position:absolute;left:0;color:#33D3C4;">✓</span>${punkt}
         </li>`)
       .join("");

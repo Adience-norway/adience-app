@@ -165,7 +165,6 @@ const no: {
     kurs: {
       emptyState: string; selectSpeaker: string; certifiedPrefix: string; nextModuleButton: string;
       confirmCheckbox: string;
-      modules: string[]; stikkord: string[];
     };
     sertifikater: {
       emptyState: string; certifiedPrefix: string; downloadCert: string;
@@ -687,20 +686,6 @@ const no: {
       certifiedPrefix: "✓ Sertifisert",
       nextModuleButton: "Fullfør neste modul",
       confirmCheckbox: "Jeg har lest og forstått innholdet i denne modulen.",
-      modules: [
-        "Introduksjon til Ådience",
-        "Mikrofonteknikk og lydkvalitet",
-        "Kommentering og publikumsengasjement",
-        "Regelverk og personvern",
-        "Avsluttende prøve",
-      ],
-      stikkord: [
-        "Teamet bak mikrofonen — hvorfor dere er avhengige av hverandre",
-        "Streamen går ALDRI i pause — kun arenalyden mutes",
-        "Å skape en 90-minutters opplevelse publikum husker",
-        "Regelverk, pauseprogram og beredskap ved kritiske hendelser",
-        "Faste roller og rutiner i teamet, klare før første kamp",
-      ],
     },
     sertifikater: {
       emptyState: "Ingen sertifiserte speakere ennå — fullfør kursmodulene under «Kursmoduler».",
@@ -1023,6 +1008,13 @@ const no: {
       aiPromptPlaceholder: "Beskriv motivet, f.eks. «en speaker og lydtekniker samarbeider foran en mikser i en arena»",
       aiGenerateButton: "Generer bilde",
       aiGenerating: "Genererer …",
+      modulerTitle: "Moduler",
+      modulerHelpText: "Dra for å omorganisere, endre navn direkte i feltene, eller legg til en helt ny modul.",
+      modulerAddButton: "+ Ny modul",
+      modulerDelete: "Slett modul",
+      modulerDeleteConfirm: "Slette denne modulen? Alt innhold og illustrasjon i den forsvinner også.",
+      modulerFieldNavnNo: "Navn (norsk)",
+      modulerFieldNavnEn: "Navn (engelsk)",
       coversTitle: "Modulillustrasjoner",
       coversHelpText: "Ett illustrasjonsbilde per modul, vises øverst i modulen for alle språk.",
       coversGenerateAll: "🪄 Generer for alle moduler",

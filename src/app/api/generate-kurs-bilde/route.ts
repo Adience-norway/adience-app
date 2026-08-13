@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
   const openaiKey = process.env.OPENAI_API_KEY;
 
   const body = (await req.json()) as {
-    prompt?: string; modulIndex?: number; sprak?: string; locale?: string;
+    prompt?: string; modulId?: string; sprak?: string; locale?: string;
   };
   const locale: Locale = body.locale === "en" ? "en" : "no";
   const err = ERRORS[locale];
@@ -69,12 +69,12 @@ export async function POST(req: NextRequest) {
   }
 
   const prompt = body.prompt?.trim();
-  const modulIndex = body.modulIndex;
+  const modulId = body.modulId;
   const sprak = body.sprak === "en" ? "en" : "no";
   if (!prompt) {
     return NextResponse.json({ error: err.missingPrompt }, { status: 400 });
   }
-  if (typeof modulIndex !== "number" || modulIndex < 0 || modulIndex > 4) {
+  if (!modulId) {
     return NextResponse.json({ error: err.missingPrompt }, { status: 400 });
   }
 
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
 
   // Last opp til kurs-media med service_role (samme bucket admin-UI-et bruker for manuell opplasting).
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
-  const path = `${modulIndex}/${sprak}/ai-${Date.now()}.png`;
+  const path = `${modulId}/${sprak}/ai-${Date.now()}.png`;
   const bytes = Buffer.from(b64, "base64");
   const { data: uploadData, error: uploadError } = await adminClient.storage
     .from("kurs-media")
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   const { data: eksisterende } = await adminClient
     .from("kurs_innhold")
     .select("rekkefolge")
-    .eq("modul_index", modulIndex)
+    .eq("modul_id", modulId)
     .eq("sprak", sprak)
     .order("rekkefolge", { ascending: false })
     .limit(1);
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
 
   const { data: nyBlokk, error: insertError } = await adminClient
     .from("kurs_innhold")
-    .insert({ modul_index: modulIndex, sprak, rekkefolge: nesteRekkefolge, type: "bilde", innhold: publicUrl })
+    .insert({ modul_id: modulId, sprak, rekkefolge: nesteRekkefolge, type: "bilde", innhold: publicUrl })
     .select("*")
     .single();
   if (insertError || !nyBlokk) {

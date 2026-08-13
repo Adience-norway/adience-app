@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import type { Session } from "@supabase/supabase-js";
 import QRCode from "qrcode";
-import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType, type KursModulCover } from "@/lib/supabase";
+import { supabase, ARENA_SELECT_COLUMNS, type Arena, type PilotPeriode, type Abonnement, type KursInnhold, type KursInnholdType, type KursModulCover, type KursModul } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { HoldmusikkCard } from "@/components/HoldmusikkCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -776,8 +776,6 @@ const KURS_MEDIA_ACCEPT: Record<KursInnholdType, string> = {
 
 function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   const t = dict.admin.kursproduksjon;
-  const kursModuler = dict.minSide.kurs.modules;
-  const [modulIndex, setModulIndex] = useState(0);
   const [sprak, setSprak] = useState<"no" | "en">("no");
   const [blokker, setBlokker] = useState<KursInnhold[]>([]);
   const [loading, setLoading] = useState(true);
@@ -790,6 +788,64 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   const [aiPrompt, setAiPrompt] = useState("");
   const [genererer, setGenererer] = useState(false);
 
+  // Moduler er nå en ekte, admin-redigerbar liste (kurs_moduler) med stabil
+  // id, i stedet for en fast rekke på posisjon 0-4 -- det er dette som gjør
+  // det trygt å dra dem i ny rekkefølge, omdøpe dem, og legge til nye, uten
+  // å ødelegge fremdriften til speakere som allerede er i gang (den spores nå
+  // per modul-id på speakerteam.fullforte_moduler, ikke som et tall).
+  const [moduler, setModuler] = useState<KursModul[]>([]);
+  const [modulId, setModulId] = useState("");
+  const [modulDragIndex, setModulDragIndex] = useState<number | null>(null);
+  const [nyModulNavn, setNyModulNavn] = useState("");
+  const [leggerTilModul, setLeggerTilModul] = useState(false);
+
+  const fetchModuler = useCallback(async () => {
+    const { data } = await supabase.from("kurs_moduler").select("*").order("rekkefolge", { ascending: true });
+    setModuler(data ?? []);
+    setModulId(prev => (data?.some(m => m.id === prev) ? prev : (data?.[0]?.id ?? "")));
+  }, []);
+
+  useEffect(() => { fetchModuler(); }, [fetchModuler]);
+
+  const gjeldendeModul = moduler.find(m => m.id === modulId) ?? null;
+
+  async function handleLeggTilModul() {
+    if (!nyModulNavn.trim()) return;
+    const nesteRekkefolge = (moduler.at(-1)?.rekkefolge ?? -1) + 1;
+    const { data, error } = await supabase
+      .from("kurs_moduler")
+      .insert({ rekkefolge: nesteRekkefolge, navn_no: nyModulNavn.trim(), navn_en: nyModulNavn.trim() })
+      .select("*")
+      .single();
+    if (error || !data) { setFeil(t.errorGeneric); return; }
+    setNyModulNavn("");
+    setLeggerTilModul(false);
+    await fetchModuler();
+    setModulId(data.id);
+  }
+
+  async function handleSlettModul(id: string) {
+    if (!confirm(t.modulerDeleteConfirm)) return;
+    await supabase.from("kurs_moduler").delete().eq("id", id);
+    fetchModuler();
+  }
+
+  async function handleOppdaterModulFelt(id: string, felt: "navn_no" | "navn_en", verdi: string) {
+    await supabase.from("kurs_moduler").update({ [felt]: verdi }).eq("id", id);
+    fetchModuler();
+  }
+
+  async function dropModulPaPosisjon(malIndex: number) {
+    if (modulDragIndex === null || modulDragIndex === malIndex) { setModulDragIndex(null); return; }
+    const nye = [...moduler];
+    const [flyttet] = nye.splice(modulDragIndex, 1);
+    nye.splice(malIndex, 0, flyttet);
+    setModuler(nye);
+    setModulDragIndex(null);
+    await Promise.all(nye.map((m, i) => supabase.from("kurs_moduler").update({ rekkefolge: i }).eq("id", m.id)));
+    fetchModuler();
+  }
+
   // Modul-illustrasjoner (ett bilde per modul, uavhengig av språk) -- adskilt
   // fra de vanlige innholdsblokkene, siden dette er ett fast "toppbilde" per
   // modul som kan genereres automatisk for alle på én gang uten at noen må
@@ -797,27 +853,27 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   // egen prompt per modul.
   const [covers, setCovers] = useState<KursModulCover[]>([]);
   const [genererAlleCovers_, setGenererAlleCovers_] = useState(false);
-  const [genererCoverIndex, setGenererCoverIndex] = useState<number | null>(null);
+  const [genererCoverId, setGenererCoverId] = useState<string | null>(null);
   const [coverPrompt, setCoverPrompt] = useState("");
   const [lasterOppCover, setLasterOppCover] = useState(false);
   const coverFileInputRef = useRef<HTMLInputElement>(null);
-  const cover = covers.find(c => c.modul_index === modulIndex) ?? null;
+  const cover = covers.find(c => c.modul_id === modulId) ?? null;
 
   const fetchCovers = useCallback(async () => {
-    const { data } = await supabase.from("kurs_modul_cover").select("*").order("modul_index");
+    const { data } = await supabase.from("kurs_modul_cover").select("*");
     setCovers(data ?? []);
   }, []);
 
   useEffect(() => { fetchCovers(); }, [fetchCovers]);
 
-  async function genererCoverForModul(idx: number, promptOverride?: string) {
+  async function genererCoverForModul(id: string, promptOverride?: string) {
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData.session?.access_token;
     if (!accessToken) return false;
     const res = await fetch("/api/generate-kurs-modul-cover", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ modulIndex: idx, prompt: promptOverride }),
+      body: JSON.stringify({ modulId: id, prompt: promptOverride }),
     });
     const data = await res.json();
     if (!res.ok || !data.ok) { setFeil(data.error ?? t.errorGeneric); return false; }
@@ -825,38 +881,40 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   }
 
   async function handleGenererCoverManuelt() {
+    if (!modulId) return;
     setFeil("");
-    setGenererCoverIndex(modulIndex);
-    const ok = await genererCoverForModul(modulIndex, coverPrompt.trim() || undefined);
-    setGenererCoverIndex(null);
+    setGenererCoverId(modulId);
+    const ok = await genererCoverForModul(modulId, coverPrompt.trim() || undefined);
+    setGenererCoverId(null);
     if (ok) { setCoverPrompt(""); fetchCovers(); }
   }
 
   async function handleRegenererCover() {
+    if (!modulId) return;
     setFeil("");
-    setGenererCoverIndex(modulIndex);
-    const ok = await genererCoverForModul(modulIndex);
-    setGenererCoverIndex(null);
+    setGenererCoverId(modulId);
+    const ok = await genererCoverForModul(modulId);
+    setGenererCoverId(null);
     if (ok) fetchCovers();
   }
 
   async function handleGenererAlleCovers() {
     setFeil("");
     setGenererAlleCovers_(true);
-    for (let idx = 0; idx < kursModuler.length; idx++) {
-      if (covers.some(c => c.modul_index === idx)) continue; // ikke overskriv eksisterende uten at noen ber om det
-      await genererCoverForModul(idx);
+    for (const modul of moduler) {
+      if (covers.some(c => c.modul_id === modul.id)) continue; // ikke overskriv eksisterende uten at noen ber om det
+      await genererCoverForModul(modul.id);
     }
     setGenererAlleCovers_(false);
     fetchCovers();
   }
 
   async function handleLastOppCover(file: File | null) {
-    if (!file) return;
+    if (!file || !modulId) return;
     setFeil("");
     setLasterOppCover(true);
     const ext = file.name.split(".").pop() ?? "png";
-    const path = `covers/${modulIndex}-${Date.now()}.${ext}`;
+    const path = `covers/${modulId}-${Date.now()}.${ext}`;
     const { data: uploadData, error: uploadError } = await supabase.storage
       .from("kurs-media")
       .upload(path, file, { contentType: file.type || undefined });
@@ -864,7 +922,7 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
     const publicUrl = supabase.storage.from("kurs-media").getPublicUrl(uploadData.path).data.publicUrl;
     const { error: upsertError } = await supabase
       .from("kurs_modul_cover")
-      .upsert({ modul_index: modulIndex, bilde_url: publicUrl, kilde: "opplastet", oppdatert: new Date().toISOString() });
+      .upsert({ modul_id: modulId, bilde_url: publicUrl, kilde: "opplastet", oppdatert: new Date().toISOString() });
     setLasterOppCover(false);
     if (upsertError) { setFeil(t.errorGeneric); return; }
     if (coverFileInputRef.current) coverFileInputRef.current.value = "";
@@ -872,16 +930,17 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   }
 
   const fetchBlokker = useCallback(async () => {
+    if (!modulId) { setBlokker([]); setLoading(false); return; }
     setLoading(true);
     const { data } = await supabase
       .from("kurs_innhold")
       .select("*")
-      .eq("modul_index", modulIndex)
+      .eq("modul_id", modulId)
       .eq("sprak", sprak)
       .order("rekkefolge", { ascending: true });
     setBlokker(data ?? []);
     setLoading(false);
-  }, [modulIndex, sprak]);
+  }, [modulId, sprak]);
 
   useEffect(() => { fetchBlokker(); }, [fetchBlokker]);
 
@@ -894,10 +953,10 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   }
 
   async function lagreTekst() {
-    if (!tekstVerdi.trim()) return;
+    if (!tekstVerdi.trim() || !modulId) return;
     const nesteRekkefolge = (blokker.at(-1)?.rekkefolge ?? -1) + 1;
     const { error } = await supabase.from("kurs_innhold").insert({
-      modul_index: modulIndex, sprak, rekkefolge: nesteRekkefolge, type: "tekst", innhold: tekstVerdi.trim(),
+      modul_id: modulId, sprak, rekkefolge: nesteRekkefolge, type: "tekst", innhold: tekstVerdi.trim(),
     });
     if (error) { setFeil(t.errorGeneric); return; }
     resetLeggTil();
@@ -905,13 +964,14 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   }
 
   async function lagreMedia(type: KursInnholdType, file: File | null) {
+    if (!modulId) return;
     setFeil("");
     const nesteRekkefolge = (blokker.at(-1)?.rekkefolge ?? -1) + 1;
     let innhold = urlVerdi.trim();
     if (!innhold && file) {
       setLasterOpp(true);
       const ext = file.name.split(".").pop() ?? "dat";
-      const path = `${modulIndex}/${sprak}/${type}-${Date.now()}.${ext}`;
+      const path = `${modulId}/${sprak}/${type}-${Date.now()}.${ext}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("kurs-media")
         .upload(path, file, { contentType: file.type || undefined });
@@ -921,7 +981,7 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
     }
     if (!innhold) return;
     const { error } = await supabase.from("kurs_innhold").insert({
-      modul_index: modulIndex, sprak, rekkefolge: nesteRekkefolge, type, innhold,
+      modul_id: modulId, sprak, rekkefolge: nesteRekkefolge, type, innhold,
     });
     if (error) { setFeil(t.errorGeneric); return; }
     resetLeggTil();
@@ -929,7 +989,7 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
   }
 
   async function genererMedAI() {
-    if (!aiPrompt.trim()) return;
+    if (!aiPrompt.trim() || !modulId) return;
     setFeil("");
     setGenererer(true);
     try {
@@ -939,7 +999,7 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
       const res = await fetch("/api/generate-kurs-bilde", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-        body: JSON.stringify({ prompt: aiPrompt.trim(), modulIndex, sprak }),
+        body: JSON.stringify({ prompt: aiPrompt.trim(), modulId, sprak }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) { setFeil(data.error ?? t.errorGeneric); return; }
@@ -994,12 +1054,74 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
         {t.helpText}
       </p>
 
+      <div style={{ ...cardStyle, marginBottom: "16px" }}>
+        <p style={{ fontWeight: 600, marginBottom: "4px" }}>{t.modulerTitle}</p>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "16px" }}>{t.modulerHelpText}</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+          {moduler.map((m, i) => (
+            <div
+              key={m.id}
+              draggable
+              onDragStart={() => setModulDragIndex(i)}
+              onDragOver={e => e.preventDefault()}
+              onDrop={() => dropModulPaPosisjon(i)}
+              onDragEnd={() => setModulDragIndex(null)}
+              style={{
+                display: "flex", alignItems: "center", gap: "10px",
+                backgroundColor: m.id === modulId ? "rgba(51,211,196,0.08)" : "rgba(255,255,255,0.03)",
+                border: modulDragIndex === i ? "1px solid #33D3C4" : "1px solid rgba(255,255,255,0.08)",
+                borderRadius: "8px", padding: "8px 10px",
+                opacity: modulDragIndex === i ? 0.4 : 1,
+                cursor: "grab",
+              }}
+            >
+              <span style={{ color: "rgba(255,255,255,0.25)", flexShrink: 0, fontSize: "14px" }}>⠿</span>
+              <button
+                onClick={() => setModulId(m.id)}
+                style={{ background: "none", border: "none", color: "rgba(255,255,255,0.3)", fontSize: "12px", fontFamily: "var(--font-ibm-plex-mono), monospace", cursor: "pointer", flexShrink: 0, width: "20px" }}
+              >
+                {i + 1}
+              </button>
+              <input
+                defaultValue={m.navn_no}
+                onBlur={e => e.target.value.trim() && e.target.value !== m.navn_no && handleOppdaterModulFelt(m.id, "navn_no", e.target.value.trim())}
+                placeholder={t.modulerFieldNavnNo}
+                style={{ ...inputStyle, flex: 1, padding: "8px 10px", fontSize: "13px" }}
+              />
+              <input
+                defaultValue={m.navn_en}
+                onBlur={e => e.target.value.trim() && e.target.value !== m.navn_en && handleOppdaterModulFelt(m.id, "navn_en", e.target.value.trim())}
+                placeholder={t.modulerFieldNavnEn}
+                style={{ ...inputStyle, flex: 1, padding: "8px 10px", fontSize: "13px" }}
+              />
+              <button onClick={() => handleSlettModul(m.id)} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F", flexShrink: 0 }}>{t.modulerDelete}</button>
+            </div>
+          ))}
+        </div>
+        {leggerTilModul ? (
+          <div style={{ display: "flex", gap: "8px" }}>
+            <input
+              value={nyModulNavn}
+              onChange={e => setNyModulNavn(e.target.value)}
+              onKeyDown={e => { if (e.key === "Enter") handleLeggTilModul(); }}
+              placeholder={t.modulerFieldNavnNo}
+              style={inputStyle}
+              autoFocus
+            />
+            <button onClick={handleLeggTilModul} disabled={!nyModulNavn.trim()} style={{ ...tealBtnStyle, flexShrink: 0, opacity: nyModulNavn.trim() ? 1 : 0.5 }}>{t.save}</button>
+            <button onClick={() => { setLeggerTilModul(false); setNyModulNavn(""); }} style={ghostBtnStyle}>{t.cancel}</button>
+          </div>
+        ) : (
+          <button onClick={() => setLeggerTilModul(true)} style={ghostBtnStyle}>{t.modulerAddButton}</button>
+        )}
+      </div>
+
       <div style={{ ...cardStyle, marginBottom: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" as const }}>
         <div>
           <p style={{ fontWeight: 600, marginBottom: "4px" }}>{t.coversTitle}</p>
           <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px" }}>{t.coversHelpText}</p>
         </div>
-        <button onClick={handleGenererAlleCovers} disabled={genererAlleCovers_} style={{ ...tealBtnStyle, opacity: genererAlleCovers_ ? 0.5 : 1, flexShrink: 0 }}>
+        <button onClick={handleGenererAlleCovers} disabled={genererAlleCovers_ || moduler.length === 0} style={{ ...tealBtnStyle, opacity: genererAlleCovers_ ? 0.5 : 1, flexShrink: 0 }}>
           {genererAlleCovers_ ? t.aiGenerating : t.coversGenerateAll}
         </button>
       </div>
@@ -1008,8 +1130,8 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" as const, marginBottom: "24px" }}>
           <div style={{ flex: 1, minWidth: "220px" }}>
             <label style={fieldLabelStyle}>{t.moduleLabel}</label>
-            <select value={modulIndex} onChange={e => { setModulIndex(Number(e.target.value)); resetLeggTil(); }} style={inputStyle}>
-              {kursModuler.map((navn, i) => <option key={i} value={i}>{i + 1}. {navn}</option>)}
+            <select value={modulId} onChange={e => { setModulId(e.target.value); resetLeggTil(); }} style={inputStyle}>
+              {moduler.map((m, i) => <option key={m.id} value={m.id}>{i + 1}. {m.navn_no}</option>)}
             </select>
           </div>
           <div style={{ width: "160px" }}>
@@ -1021,6 +1143,7 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
           </div>
         </div>
 
+        {gjeldendeModul && (
         <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" as const, marginBottom: "24px", padding: "16px", backgroundColor: "rgba(255,255,255,0.03)", borderRadius: "10px" }}>
           <div style={{ flexShrink: 0 }}>
             {cover ? (
@@ -1034,15 +1157,15 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
           </div>
           <div style={{ flex: 1, minWidth: "260px" }}>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "10px" }}>
-              {t.coverForModule} <strong style={{ color: "#fff" }}>{kursModuler[modulIndex]}</strong>
+              {t.coverForModule} <strong style={{ color: "#fff" }}>{gjeldendeModul.navn_no}</strong>
             </p>
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" as const, marginBottom: "10px" }}>
               <button
                 onClick={handleRegenererCover}
-                disabled={genererCoverIndex === modulIndex}
-                style={{ ...ghostBtnStyle, opacity: genererCoverIndex === modulIndex ? 0.5 : 1 }}
+                disabled={genererCoverId === modulId}
+                style={{ ...ghostBtnStyle, opacity: genererCoverId === modulId ? 0.5 : 1 }}
               >
-                {genererCoverIndex === modulIndex ? t.aiGenerating : t.coverRegenerate}
+                {genererCoverId === modulId ? t.aiGenerating : t.coverRegenerate}
               </button>
               <input
                 ref={coverFileInputRef}
@@ -1063,18 +1186,19 @@ function KursproduksjonSeksjon({ dict }: { dict: Dictionary }) {
                 onChange={e => setCoverPrompt(e.target.value)}
                 placeholder={t.aiPromptPlaceholder}
                 style={{ ...inputStyle, fontSize: "13px" }}
-                disabled={genererCoverIndex === modulIndex}
+                disabled={genererCoverId === modulId}
               />
               <button
                 onClick={handleGenererCoverManuelt}
-                disabled={!coverPrompt.trim() || genererCoverIndex === modulIndex}
-                style={{ ...tealBtnStyle, flexShrink: 0, opacity: (!coverPrompt.trim() || genererCoverIndex === modulIndex) ? 0.5 : 1 }}
+                disabled={!coverPrompt.trim() || genererCoverId === modulId}
+                style={{ ...tealBtnStyle, flexShrink: 0, opacity: (!coverPrompt.trim() || genererCoverId === modulId) ? 0.5 : 1 }}
               >
                 {t.coverFromPrompt}
               </button>
             </div>
           </div>
         </div>
+        )}
 
         {loading ? null : blokker.length === 0 ? (
           <div style={{ ...emptyStyle, marginBottom: "20px" }}>{t.emptyState}</div>
