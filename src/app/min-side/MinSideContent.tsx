@@ -16,6 +16,7 @@ import {
   type KursModulCover,
   type KursModul,
   type KursSporsmal,
+  type Sendingslogg,
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
@@ -24,14 +25,6 @@ import { geokodPoststed, useGeocoder } from "@/lib/geonorge";
 import type { Dictionary, Locale } from "@/i18n/get-dictionary";
 
 type MinSide = Dictionary["minSide"];
-
-function generateStreamId(): string {
-  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-  const random = Array.from({ length: 8 }, () =>
-    chars[Math.floor(Math.random() * chars.length)]
-  ).join("");
-  return `ADC${random}${Date.now().toString().slice(-6)}`;
-}
 
 function beskrivInnloggingsfeil(message: string, t: MinSide["login"]): string {
   if (message.toLowerCase().includes("email not confirmed")) {
@@ -424,7 +417,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
           <SpeakerteamSection arenaId={arena.id} arena={arena} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
         )}
         {tab === "statistikk" && arena && (
-          <StatistikkSection arenaId={arena.id} arrangementer={arrangementer} onChanged={loadData} dict={dict} locale={locale} />
+          <StatistikkSection arena={arena} dict={dict} locale={locale} />
         )}
         {tab === "media" && arena && <MediaSection arena={arena} dict={dict} locale={locale} />}
       </div>
@@ -522,157 +515,67 @@ function NextStepItem({ text, urgent }: { text: string; urgent?: boolean }) {
 
 /* ─── 2. STATISTIKK ─── */
 
-function StatistikkSection({
-  arenaId, arrangementer, onChanged, dict, locale,
-}: { arenaId: string; arrangementer: Arrangement[]; onChanged: () => void; dict: Dictionary; locale: Locale }) {
+function StatistikkSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.statistikk;
   const dateLocale = locale === "en" ? "en-GB" : "no-NO";
-  const [showForm, setShowForm] = useState(false);
-  const [qrModal, setQrModal] = useState<{ tittel: string; streamId: string; dataUrl: string } | null>(null);
-  const [tittel, setTittel] = useState("");
-  const [startTid, setStartTid] = useState("");
-  const [sluttTid, setSluttTid] = useState("");
-  const [kreverBetaling, setKreverBetaling] = useState(false);
-  const [pris, setPris] = useState("0");
-  const [lytterGrense, setLytterGrense] = useState("100");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [logg, setLogg] = useState<Sendingslogg[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  async function generateQr(streamId: string) {
-    const url = `https://app.adience.no/a/${streamId}`;
-    return QRCode.toDataURL(url, { width: 220, margin: 2, color: { dark: "#073E46", light: "#33D3C4" } });
-  }
+  const fetchLogg = useCallback(async () => {
+    if (!arena.stream_id) { setLoading(false); return; }
+    setLoading(true);
+    const { data } = await supabase
+      .from("sendingslogg")
+      .select("*")
+      .eq("stream_id", arena.stream_id)
+      .order("startet_at", { ascending: false })
+      .limit(50);
+    setLogg(data ?? []);
+    setLoading(false);
+  }, [arena.stream_id]);
 
-  async function handleCreate(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setError("");
+  useEffect(() => { fetchLogg(); }, [fetchLogg]);
 
-    const streamId = generateStreamId();
-    const qrKodeUrl = `https://app.adience.no/a/${streamId}`;
-
-    const { error } = await supabase.from("arrangementer").insert({
-      arena_id: arenaId,
-      tittel,
-      start_tid: startTid ? new Date(startTid).toISOString() : null,
-      slutt_tid: sluttTid ? new Date(sluttTid).toISOString() : null,
-      stream_id: streamId,
-      qr_kode_url: qrKodeUrl,
-      krever_betaling: kreverBetaling,
-      pris: kreverBetaling ? Number(pris) : 0,
-      lytter_grense: Number(lytterGrense),
-    });
-
-    setSaving(false);
-    if (error) { setError(error.message); return; }
-
-    const dataUrl = await generateQr(streamId);
-    setQrModal({ tittel, streamId, dataUrl });
-    setTittel(""); setStartTid(""); setSluttTid(""); setKreverBetaling(false); setPris("0"); setLytterGrense("100");
-    setShowForm(false);
-    onChanged();
-  }
-
-  async function visQr(a: Arrangement) {
-    if (!a.stream_id) return;
-    const dataUrl = await generateQr(a.stream_id);
-    setQrModal({ tittel: a.tittel, streamId: a.stream_id, dataUrl });
+  function varighet(startetAt: string, avsluttetAt: string | null): string {
+    const start = new Date(startetAt).getTime();
+    const slutt = avsluttetAt ? new Date(avsluttetAt).getTime() : Date.now();
+    const minutter = Math.max(0, Math.round((slutt - start) / 60000));
+    if (minutter < 60) return `${minutter} min`;
+    return `${Math.floor(minutter / 60)}t ${minutter % 60}min`;
   }
 
   return (
     <div>
-      <div style={toolbarStyle}>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>{arrangementer.length} {t.countSuffix}</span>
-        <button onClick={() => setShowForm((v) => !v)} style={tealBtnStyle}>
-          {showForm ? t.cancel : t.newEvent}
-        </button>
+      <div style={{ ...cardStyle, marginBottom: "24px" }}>
+        <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.introTitle}</h3>
+        <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.6 }}>{t.introText}</p>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleCreate} style={{ ...cardStyle, marginBottom: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div>
-            <label style={fieldLabelStyle}>{t.fieldTitle}</label>
-            <input required value={tittel} onChange={(e) => setTittel(e.target.value)} style={inputStyle} placeholder={t.fieldTitlePlaceholder} />
-          </div>
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" as const }}>
-            <div style={{ flex: 1, minWidth: "200px" }}>
-              <label style={fieldLabelStyle}>{t.fieldStart}</label>
-              <input type="datetime-local" required value={startTid} onChange={(e) => setStartTid(e.target.value)} style={inputStyle} />
-            </div>
-            <div style={{ flex: 1, minWidth: "200px" }}>
-              <label style={fieldLabelStyle}>{t.fieldSlutt}</label>
-              <input type="datetime-local" required value={sluttTid} onChange={(e) => setSluttTid(e.target.value)} style={inputStyle} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "12px", alignItems: "flex-end", flexWrap: "wrap" as const }}>
-            <div>
-              <label style={fieldLabelStyle}>{t.fieldListenerLimit}</label>
-              <input type="number" min={1} value={lytterGrense} onChange={(e) => setLytterGrense(e.target.value)} style={{ ...inputStyle, width: "120px" }} />
-            </div>
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "14px", color: "rgba(255,255,255,0.7)", marginBottom: "12px" }}>
-              <input type="checkbox" checked={kreverBetaling} onChange={(e) => setKreverBetaling(e.target.checked)} />
-              {t.requiresPayment}
-            </label>
-            {kreverBetaling && (
-              <div>
-                <label style={fieldLabelStyle}>{t.fieldPrice}</label>
-                <input type="number" min={0} value={pris} onChange={(e) => setPris(e.target.value)} style={{ ...inputStyle, width: "120px" }} />
-              </div>
-            )}
-          </div>
-          {error && <p style={{ color: "#D94F4F", fontSize: "13px" }}>{error}</p>}
-          <button type="submit" disabled={saving} style={{ ...tealBtnStyle, alignSelf: "flex-start" }}>
-            {saving ? t.creating : t.createButton}
-          </button>
-        </form>
-      )}
-
-      {arrangementer.length === 0 ? (
-        <div style={{ ...cardStyle, ...emptyStyle }}>{t.emptyState}</div>
-      ) : (
-        <table style={tableStyle}>
-          <thead><tr style={theadRowStyle}>
-            <th style={thStyle}>{t.thTitle}</th>
-            <th style={thStyle}>{t.thStart}</th>
-            <th style={thStyle}>{t.thSlutt}</th>
-            <th style={thStyle}>{t.thListenerLimit}</th>
-            <th style={thStyle}>{t.thPayment}</th>
-            <th style={thStyle}></th>
-          </tr></thead>
-          <tbody>
-            {arrangementer.map((a) => {
-              return (
-                <tr key={a.id}>
-                  <td style={tdStyle}>{a.tittel}</td>
-                  <td style={tdStyle}>{a.start_tid ? new Date(a.start_tid).toLocaleString(dateLocale) : "—"}</td>
-                  <td style={tdStyle}>{a.slutt_tid ? new Date(a.slutt_tid).toLocaleString(dateLocale) : "—"}</td>
-                  <td style={tdStyle}>{a.lytter_grense}</td>
-                  <td style={tdStyle}>{a.krever_betaling ? `${a.pris} kr` : t.free}</td>
+      {!loading && (
+        logg.length === 0 ? (
+          <div style={{ ...cardStyle, ...emptyStyle }}>{t.emptyState}</div>
+        ) : (
+          <table style={tableStyle}>
+            <thead><tr style={theadRowStyle}>
+              <th style={thStyle}>{t.thStart}</th>
+              <th style={thStyle}>{t.thSlutt}</th>
+              <th style={thStyle}>{t.thVarighet}</th>
+            </tr></thead>
+            <tbody>
+              {logg.map((s) => (
+                <tr key={s.id}>
+                  <td style={tdStyle}>{new Date(s.startet_at).toLocaleString(dateLocale)}</td>
                   <td style={tdStyle}>
-                    {a.stream_id && <button onClick={() => visQr(a)} style={ghostBtnStyle}>{t.showQr}</button>}
+                    {s.avsluttet_at ? new Date(s.avsluttet_at).toLocaleString(dateLocale) : (
+                      <span style={{ color: "#33D3C4", fontWeight: 600 }}>{t.pagaende}</span>
+                    )}
                   </td>
+                  <td style={tdStyle}>{varighet(s.startet_at, s.avsluttet_at)}</td>
                 </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      )}
-
-      {qrModal && (
-        <div style={modalOverlayStyle} onClick={() => setQrModal(null)}>
-          <div style={{ ...modalBoxStyle, textAlign: "center" as const }} onClick={(e) => e.stopPropagation()}>
-            <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{qrModal.tittel}</h3>
-            <p style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "13px", color: "#33D3C4", marginBottom: "20px" }}>
-              {qrModal.streamId}
-            </p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qrModal.dataUrl} alt="QR" style={{ width: "220px", height: "220px", margin: "0 auto", borderRadius: "8px" }} />
-            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginTop: "16px" }}>
-              {t.qrModalHint}
-            </p>
-            <button onClick={() => setQrModal(null)} style={{ ...ghostBtnStyle, marginTop: "20px" }}>{t.close}</button>
-          </div>
-        </div>
+              ))}
+            </tbody>
+          </table>
+        )
       )}
 
       <div style={{ ...cardStyle, marginTop: "24px" }}>

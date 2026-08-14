@@ -143,6 +143,17 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
     }
   }
 
+  // Logger start/slutt for faktiske sendinger på arenaens faste stream-ID
+  // (se /api/cast-log) -- fire-and-forget, skal aldri kunne blokkere eller
+  // avbryte selve sendingen om loggingen skulle feile.
+  function logSending(action: "start" | "stop") {
+    fetch("/api/cast-log", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ streamId: streamId.trim(), passord: passord.trim(), action }),
+    }).catch(() => { /* logging skal aldri stoppe en sending */ });
+  }
+
   // VU meter animation loop
   const startVuMeter = useCallback((analyser: AnalyserNode) => {
     const buf = new Uint8Array(analyser.frequencyBinCount);
@@ -271,6 +282,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
           } else if (info === "publish_started") {
             setStatus("live");
             listenerTimer.current = setInterval(pollViewerCount, 5000);
+            logSending("start");
           } else if (info === "publish_finished") {
             setStatus("idle");
           }
@@ -336,6 +348,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   }
 
   function stopStreaming() {
+    if (status === "live") logSending("stop");
     cancelAnimationFrame(animFrameRef.current);
     if (listenerTimer.current) clearInterval(listenerTimer.current);
     try { adaptorRef.current?.stop(publiserStreamId(streamId.trim())); } catch { /* already stopped */ }

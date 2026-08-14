@@ -134,14 +134,9 @@ const no: {
       saveButton: string; saving: string; saved: string;
     };
     statistikk: {
-      countSuffix: string; cancel: string; newEvent: string;
-      fieldTitle: string; fieldTitlePlaceholder: string; fieldStart: string; fieldSlutt: string;
-      fieldListenerLimit: string; requiresPayment: string; fieldPrice: string;
-      creating: string; createButton: string;
+      introTitle: string; introText: string;
       emptyState: string;
-      thTitle: string; thStart: string; thSlutt: string; thListenerLimit: string; thPayment: string; free: string;
-      showQr: string;
-      qrModalHint: string; close: string;
+      thStart: string; thSlutt: string; thVarighet: string; pagaende: string;
       aiInsightTitle: string; aiInsightComing: string;
     };
     geofence: {
@@ -606,30 +601,15 @@ const no: {
       saved: "Lagret ✓",
     },
     statistikk: {
-      countSuffix: "arrangementer",
-      cancel: "Avbryt",
-      newEvent: "+ Nytt arrangement",
-      fieldTitle: "Tittel",
-      fieldTitlePlaceholder: "f.eks. Hjemmekamp mot Vålerenga",
-      fieldStart: "Start",
-      fieldSlutt: "Slutt",
-      fieldListenerLimit: "Lyttergrense",
-      requiresPayment: "Krever betaling",
-      fieldPrice: "Pris (kr)",
-      creating: "Oppretter…",
-      createButton: "Opprett arrangement",
-      emptyState: "Ingen arrangementer registrert ennå.",
-      thTitle: "Tittel",
+      introTitle: "Sendingslogg",
+      introText: "Ådience-koden til arenaen er fast og skal aldri byttes ut — den er som en gateadresse. Her føres automatisk logg over når sendingen på denne koden har vært åpen.",
+      emptyState: "Ingen sendinger registrert ennå.",
       thStart: "Start",
       thSlutt: "Slutt",
-      thListenerLimit: "Lyttergrense",
-      thPayment: "Betaling",
-      free: "Gratis",
-      showQr: "Vis QR",
-      qrModalHint: "Skann for å åpne strømmen. Publikum trenger ikke logge inn — QR-koden fungerer som billett så lenge de er på stedet i riktig tidsrom.",
-      close: "Lukk",
+      thVarighet: "Varighet",
+      pagaende: "Pågår",
       aiInsightTitle: "AI-innsikt",
-      aiInsightComing: "Automatisk oppsummering av toppengasjement per arrangement kommer når Claude-integrasjonen er koblet på.",
+      aiInsightComing: "Automatisk tilbakemelding på kommunikasjonskvalitet, innholdsvariasjon og lydkvalitet kommer når Claude-integrasjonen er koblet på.",
     },
     geofence: {
       title: "Dekningsområde",

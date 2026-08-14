@@ -89,6 +89,13 @@ export type Arrangement = {
   opprettet: string;
 };
 
+export type Sendingslogg = {
+  id: string;
+  stream_id: string;
+  startet_at: string;
+  avsluttet_at: string | null;
+};
+
 export type SpeakerTeam = {
   id: string;
   arena_id: string;
