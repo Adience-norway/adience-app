@@ -1068,51 +1068,54 @@ function SpeakerteamSection({
 
   return (
     <div>
-      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px", lineHeight: 1.6 }}>
-        {t.introText}
-      </p>
-      <div style={toolbarStyle}>
-        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>{speakerteam.length} {t.countSuffix}</span>
-        <button onClick={() => setShowForm((v) => !v)} style={tealBtnStyle}>
-          {showForm ? t.cancel : t.addSpeaker}
-        </button>
+      <div style={cardStyle}>
+        <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.introTitle}</h3>
+        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px", lineHeight: 1.6 }}>
+          {t.introText}
+        </p>
+        <div style={toolbarStyle}>
+          <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>{speakerteam.length} {t.countSuffix}</span>
+          <button onClick={() => setShowForm((v) => !v)} style={tealBtnStyle}>
+            {showForm ? t.cancel : t.addSpeaker}
+          </button>
+        </div>
+
+        {showForm && (
+          <form onSubmit={handleAdd} style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "16px", marginBottom: "24px", display: "flex", gap: "12px", flexWrap: "wrap" as const, alignItems: "flex-end" }}>
+            <div><label style={fieldLabelStyle}>{t.fieldFornavn}</label><input required value={fornavn} onChange={(e) => setFornavn(e.target.value)} style={inputStyle} /></div>
+            <div><label style={fieldLabelStyle}>{t.fieldEtternavn}</label><input required value={etternavn} onChange={(e) => setEtternavn(e.target.value)} style={inputStyle} /></div>
+            <div><label style={fieldLabelStyle}>{t.fieldEpost}</label><input type="email" required value={epost} onChange={(e) => setEpost(e.target.value)} style={inputStyle} /></div>
+            <div><label style={fieldLabelStyle}>{t.fieldRolle}</label><input value={rolle} onChange={(e) => setRolle(e.target.value)} style={inputStyle} /></div>
+            <button type="submit" disabled={saving} style={tealBtnStyle}>{saving ? t.saving : t.addButton}</button>
+          </form>
+        )}
+
+        {speakerteam.length === 0 ? (
+          <div style={emptyStyle}>{t.emptyState}</div>
+        ) : (
+          <table style={tableStyle}>
+            <thead><tr style={theadRowStyle}>
+              <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thRolle}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th><th style={thStyle} />
+            </tr></thead>
+            <tbody>
+              {speakerteam.map((s) => (
+                <tr key={s.id}>
+                  <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
+                  <td style={tdStyle}>{s.epost}</td>
+                  <td style={tdStyle}>{s.rolle ?? "—"}</td>
+                  <td style={tdStyle}>{s.fullforte_moduler.length} / {moduler.length}</td>
+                  <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
+                  <td style={tdStyle}>
+                    <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
+                      {t.deleteButton}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
-
-      {showForm && (
-        <form onSubmit={handleAdd} style={{ ...cardStyle, marginBottom: "24px", display: "flex", gap: "12px", flexWrap: "wrap" as const, alignItems: "flex-end" }}>
-          <div><label style={fieldLabelStyle}>{t.fieldFornavn}</label><input required value={fornavn} onChange={(e) => setFornavn(e.target.value)} style={inputStyle} /></div>
-          <div><label style={fieldLabelStyle}>{t.fieldEtternavn}</label><input required value={etternavn} onChange={(e) => setEtternavn(e.target.value)} style={inputStyle} /></div>
-          <div><label style={fieldLabelStyle}>{t.fieldEpost}</label><input type="email" required value={epost} onChange={(e) => setEpost(e.target.value)} style={inputStyle} /></div>
-          <div><label style={fieldLabelStyle}>{t.fieldRolle}</label><input value={rolle} onChange={(e) => setRolle(e.target.value)} style={inputStyle} /></div>
-          <button type="submit" disabled={saving} style={tealBtnStyle}>{saving ? t.saving : t.addButton}</button>
-        </form>
-      )}
-
-      {speakerteam.length === 0 ? (
-        <div style={{ ...cardStyle, ...emptyStyle }}>{t.emptyState}</div>
-      ) : (
-        <table style={tableStyle}>
-          <thead><tr style={theadRowStyle}>
-            <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thRolle}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th><th style={thStyle} />
-          </tr></thead>
-          <tbody>
-            {speakerteam.map((s) => (
-              <tr key={s.id}>
-                <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
-                <td style={tdStyle}>{s.epost}</td>
-                <td style={tdStyle}>{s.rolle ?? "—"}</td>
-                <td style={tdStyle}>{s.fullforte_moduler.length} / {moduler.length}</td>
-                <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
-                <td style={tdStyle}>
-                  <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
-                    {t.deleteButton}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
 
       <div style={{ marginTop: "24px" }}>
         <h3 style={{ ...sectionHeadingStyle, marginBottom: "16px" }}>{dict.minSide.tabs.kurs}</h3>
@@ -1128,6 +1131,25 @@ function SpeakerteamSection({
 }
 
 /* ─── 5. KURSMODULER ─── */
+
+// Enkel, merkevaretro illustrasjon (samme petrol/korall-språk som
+// sertifikat-seglet) for det tomme "0 speakere"-øyeblikket i Kursmoduler --
+// en arenabue med tre teammedlemmer og en lydbølge, i stedet for en tom
+// grå boks, slik at det inviterer til å legge til det første teammedlemmet.
+function KursHeroIllustrasjon() {
+  return (
+    <svg viewBox="0 0 280 110" width="220" height="86" style={{ margin: "0 auto", display: "block" }} xmlns="http://www.w3.org/2000/svg">
+      <path d="M20 95 Q140 35 260 95" stroke="#33D3C4" strokeWidth="2" fill="none" opacity="0.35" />
+      <path d="M40 95 Q140 50 240 95" stroke="#33D3C4" strokeWidth="1.5" fill="none" opacity="0.2" />
+      <circle cx="90" cy="55" r="10" fill="#FF6B4A" opacity="0.85" />
+      <circle cx="140" cy="40" r="12" fill="#33D3C4" opacity="0.9" />
+      <circle cx="190" cy="55" r="10" fill="#FF6B4A" opacity="0.85" />
+      <rect x="136.5" y="12" width="3" height="16" rx="1.5" fill="#33D3C4" />
+      <rect x="128" y="17" width="3" height="11" rx="1.5" fill="#33D3C4" opacity="0.6" />
+      <rect x="145" y="17" width="3" height="11" rx="1.5" fill="#33D3C4" opacity="0.6" />
+    </svg>
+  );
+}
 
 function youtubeEmbedUrl(url: string): string | null {
   const watch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]+)/);
@@ -1290,7 +1312,12 @@ function KursSection({ speakerteam, moduler, onChanged, dict, locale }: { speake
   }
 
   if (speakerteam.length === 0) {
-    return <div style={{ ...cardStyle, ...emptyStyle }}>{t.emptyState}</div>;
+    return (
+      <div style={{ ...cardStyle, textAlign: "center" as const, padding: "48px 24px" }}>
+        <KursHeroIllustrasjon />
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "14px", marginTop: "20px" }}>{t.emptyState}</p>
+      </div>
+    );
   }
 
   return (
@@ -1545,25 +1572,30 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
       <div>
-        <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
-        <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
-          {t.qrHelpText}
-        </p>
         {!arena.stream_id ? (
-          <p style={{ ...cardStyle, padding: "20px", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
-            {t.noStreamId}
-          </p>
+          <>
+            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
+            <p style={{ ...cardStyle, padding: "20px", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
+              {t.noStreamId}
+            </p>
+          </>
         ) : (
           <>
             {/* Stream-ID + direkte lenke til castingverktøyet — dette er det
                 arenaens EGET personale (den som skal sende) trenger, ikke
-                publikum (publikum bruker QR-kodene under). ID-en er
-                permanent — den slutter aldri å eksistere, uavhengig av
-                abonnement/pilotperiode; kun selve muligheten til å faktisk
-                starte en sending kan bli stengt da. Cast-lenken forhåndsfyller
-                ID-en på castingsiden (se initialStreamIdFromUrl i
-                CastContent.tsx), så personalet slipper å skrive den inn selv. */}
-            <div style={{ ...cardStyle, padding: "16px 20px", marginBottom: "16px", display: "flex", flexDirection: "column" as const, gap: "14px" }}>
+                publikum (publikum bruker QR-kodene under). Egen overskrift,
+                adskilt fra QR-forklaringen under, siden det er to helt
+                forskjellige funksjoner. ID-en er permanent — den slutter
+                aldri å eksistere, uavhengig av abonnement/pilotperiode; kun
+                selve muligheten til å faktisk starte en sending kan bli
+                stengt da. Cast-lenken forhåndsfyller ID-en på castingsiden
+                (se initialStreamIdFromUrl i CastContent.tsx), så personalet
+                slipper å skrive den inn selv. */}
+            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.castToolTitle}</h3>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
+              {t.castToolHelp}
+            </p>
+            <div style={{ ...cardStyle, padding: "16px 20px", marginBottom: "28px", display: "flex", flexDirection: "column" as const, gap: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" as const }}>
                 <div>
                   <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "4px" }}>{t.streamIdLabel}</div>
@@ -1590,51 +1622,68 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                 {t.openCastTool}
               </a>
             </div>
+
+            {/* QR-forklaringen sitter nå rett over selve QR-kortene den
+                faktisk beskriver, i stedet for over Stream-ID/passord-boksen
+                over (som er en helt annen funksjon). Plakaten er nå et
+                fjerde kort i samme grid som QR-kodene, samme størrelse og
+                stil, i stedet for en bred stripe som brøt rytmen. */}
+            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
+              {t.qrHelpText}
+            </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
-            {qrKort.map((k) => (
-              <div key={k.fil} style={{ ...cardStyle, padding: "20px", textAlign: "center" }}>
+              {qrKort.map((k) => (
+                <div key={k.fil} style={{ ...cardStyle, padding: "20px", textAlign: "center" }}>
+                  <div style={{ backgroundColor: "#ffffff", borderRadius: "10px", padding: "12px", marginBottom: "14px", display: "inline-block", minWidth: "140px", minHeight: "140px" }}>
+                    {k.data ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={k.data} alt={k.tittel} style={{ width: "140px", height: "140px", display: "block" }} />
+                    ) : (
+                      <div style={{ width: "140px", height: "140px", display: "flex", alignItems: "center", justifyContent: "center", color: "#073E46", fontSize: "12px" }}>
+                        {genererer ? t.generating : "—"}
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{k.tittel}</div>
+                  <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "14px" }}>{k.beskrivelse}</p>
+                  {k.data && (
+                    <a href={k.data} download={k.fil} style={{ ...tealBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
+                      {t.downloadPng}
+                    </a>
+                  )}
+                </div>
+              ))}
+              <div style={{ ...cardStyle, padding: "20px", textAlign: "center" }}>
                 <div style={{ backgroundColor: "#ffffff", borderRadius: "10px", padding: "12px", marginBottom: "14px", display: "inline-block", minWidth: "140px", minHeight: "140px" }}>
-                  {k.data ? (
+                  {qrAdience ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={k.data} alt={k.tittel} style={{ width: "140px", height: "140px", display: "block" }} />
+                    <img src={qrAdience} alt={t.posterCardTitle} style={{ width: "140px", height: "140px", display: "block" }} />
                   ) : (
                     <div style={{ width: "140px", height: "140px", display: "flex", alignItems: "center", justifyContent: "center", color: "#073E46", fontSize: "12px" }}>
                       {genererer ? t.generating : "—"}
                     </div>
                   )}
                 </div>
-                <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{k.tittel}</div>
-                <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "14px" }}>{k.beskrivelse}</p>
-                {k.data && (
-                  <a href={k.data} download={k.fil} style={{ ...tealBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
-                    {t.downloadPng}
-                  </a>
-                )}
-              </div>
-            ))}
-            </div>
-
-            <div style={{ ...cardStyle, marginTop: "16px", padding: "20px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" as const }}>
-              <div>
                 <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{t.posterCardTitle}</div>
-                <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, maxWidth: "420px" }}>{t.posterCardDesc}</p>
+                <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "14px" }}>{t.posterCardDesc}</p>
+                <button onClick={printPoster} disabled={!qrAdience} style={{ ...tealBtnStyle, width: "100%", opacity: qrAdience ? 1 : 0.5 }}>
+                  {t.printPoster}
+                </button>
               </div>
-              <button onClick={printPoster} disabled={!qrAdience} style={{ ...tealBtnStyle, opacity: qrAdience ? 1 : 0.5, flexShrink: 0 }}>
-                {t.printPoster}
-              </button>
             </div>
           </>
         )}
       </div>
 
-      <div>
+      <div style={cardStyle}>
         <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.materialTitle}</h3>
         <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
           {t.materialSubtitle}
         </p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
           {pdfKort.map((k) => (
-            <div key={k.fil} style={{ ...cardStyle, padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div key={k.fil} style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
                 <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "6px" }}>{k.tittel}</div>
                 <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "16px" }}>{k.beskrivelse}</p>

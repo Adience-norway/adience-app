@@ -173,6 +173,7 @@ const no: {
     };
     media: {
       qrTitlePrefix: string; qrHelpText: string; noStreamId: string;
+      castToolTitle: string; castToolHelp: string;
       streamIdLabel: string; copyLink: string; copied: string; openCastTool: string; castPassordLabel: string;
       qrCardAdience: { title: string; desc: string };
       qrCardWhite: { title: string; desc: string };
@@ -673,7 +674,7 @@ const no: {
       fieldRolle: "Rolle (f.eks. Hovedspeaker, Lydmann, Utspeaker)",
       saving: "Lagrer…",
       addButton: "Legg til",
-      emptyState: "Ingen speakere registrert ennå.",
+      emptyState: "Ingen speakere lagt til ennå — legg til det første teammedlemmet for å komme i gang.",
       deleteButton: "Slett",
       confirmDelete: "Fjerne denne speakeren fra teamet?",
       thName: "Navn",
@@ -684,7 +685,7 @@ const no: {
       certifiedLabel: "✓ Sertifisert",
     },
     kurs: {
-      emptyState: "Legg til speakere under «Speakerteam» for å spore kursprogresjon.",
+      emptyState: "Legg til det første teammedlemmet over for å låse opp kursmodulene.",
       selectSpeaker: "Velg speaker",
       certifiedPrefix: "✓ Sertifisert",
       nextModuleButton: "Fullfør neste modul",
@@ -692,7 +693,7 @@ const no: {
       sporsmalFeilPrefix: "Ikke helt riktig. Tenk på dette:",
     },
     sertifikater: {
-      emptyState: "Ingen sertifiserte speakere ennå — fullfør kursmodulene under «Kursmoduler».",
+      emptyState: "Ingen sertifiserte speakere ennå — fullfør kursmodulene over for å låse opp sertifikatet.",
       certifiedPrefix: "Sertifisert",
       downloadCert: "Last ned sertifikat",
       certTitlePrefix: "Sertifikat —",
@@ -704,6 +705,8 @@ const no: {
       qrTitlePrefix: "QR-kode for",
       qrHelpText: "Denne QR-koden er unik for akkurat deres arena — den åpner Ådience-appen direkte på deres arrangement. Har ikke publikum appen ennå, blir de automatisk sendt videre til riktig nedlasting i App Store eller Google Play.",
       noStreamId: "Arenaen mangler en stream-ID ennå — ta kontakt med Ådience for å få satt den opp, så blir QR-koden tilgjengelig her.",
+      castToolTitle: "For castingverktøyet",
+      castToolHelp: "Dette er innloggingen speakerteamet deres bruker for å faktisk starte en sending — ikke det samme som QR-kodene under, som er for publikum.",
       streamIdLabel: "Stream-ID (til castingverktøyet)",
       copyLink: "Kopier",
       copied: "✓ Kopiert",
