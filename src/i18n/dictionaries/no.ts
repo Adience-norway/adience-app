@@ -143,7 +143,7 @@ const no: {
       title: string; subtitle: string; radiusLabel: string; saved: string; saveButton: string; saving: string;
       manualTitle: string; manualSubtitlePrefix: string; manualSubtitleSuffix: string; manualCta: string;
       findingLocation: string; clickHint: string; placeInMapHint: string; savePosition: string;
-      polygonManagedByAdience: string;
+      polygonManagedByAdience: string; radiusMaxHint: string;
       addressTitle: string; addressSubtitle: string;
       fieldGateadresse: string; gateadressePlaceholder: string;
       fieldPostnummer: string; postnummerPlaceholder: string;
@@ -627,6 +627,7 @@ const no: {
       placeInMapHint: "Klikk i kartet for å plassere arenaen.",
       savePosition: "Lagre posisjon",
       polygonManagedByAdience: "Dette dekningsområdet er tegnet inn av Ådience som en del av årsabonnementet ditt. Ta kontakt med oss hvis noe skal justeres.",
+      radiusMaxHint: "Maks 500 m selvbetjent. Trenger dere et større eller uregelmessig område (f.eks. en festivalplass eller golfbane), setter Ådience det opp for dere.",
       addressTitle: "Adresse",
       addressSubtitle: "Gateadressen vises til publikum i appen og brukes til å beregne avstand til arenaen.",
       fieldGateadresse: "Gateadresse",

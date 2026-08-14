@@ -410,6 +410,7 @@ const en: Dictionary = {
       placeInMapHint: "Click on the map to place the venue.",
       savePosition: "Save position",
       polygonManagedByAdience: "This coverage area was drawn by Ådience as part of your annual plan. Contact us if anything needs adjusting.",
+      radiusMaxHint: "500 m max, self-service. Need a larger or irregular area (e.g. a festival ground or golf course)? Ådience can set that up for you.",
       addressTitle: "Address",
       addressSubtitle: "The street address is shown to listeners in the app and used to calculate distance to the venue.",
       fieldGateadresse: "Street address",

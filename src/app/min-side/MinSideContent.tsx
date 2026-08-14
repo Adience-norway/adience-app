@@ -26,6 +26,12 @@ import type { Dictionary, Locale } from "@/i18n/get-dictionary";
 
 type MinSide = Dictionary["minSide"];
 
+// Ådience Demo skal stå helt fri -- samme unntak som HOLDMUSIKK_ARENAER i
+// CastContent.tsx. Selve begrensningen håndheves i DB-triggeren
+// enforce_arena_geofence_limits(), dette er kun for at UI-slideren for
+// demoens (langt større) radius ikke skal se ødelagt/klippet ut.
+const ADIENCE_DEMO_STREAM_ID = "ADCUGN1LDV4866127";
+
 function beskrivInnloggingsfeil(message: string, t: MinSide["login"]): string {
   if (message.toLowerCase().includes("email not confirmed")) {
     return t.errorEmailNotConfirmed;
@@ -787,6 +793,8 @@ function ArenaInfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () 
 
 function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
   const t = dict.minSide.geofence;
+  const erDemo = arena.stream_id === ADIENCE_DEMO_STREAM_ID;
+  const radiusMax = erDemo ? 2000 : 500;
   const [localRadius, setLocalRadius] = useState(arena.geofence_radius ?? 300);
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
@@ -854,11 +862,16 @@ function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: 
         <span style={{ fontSize: "13px", color: "#33D3C4", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>{localRadius} m</span>
       </div>
       <input
-        type="range" min={50} max={2000} step={10}
+        type="range" min={50} max={radiusMax} step={10}
         value={localRadius}
         onChange={(e) => setLocalRadius(Number(e.target.value))}
         style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer" }}
       />
+      {!erDemo && (
+        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
+          {t.radiusMaxHint}
+        </p>
+      )}
       {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
       {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.saved}</p>}
       <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
