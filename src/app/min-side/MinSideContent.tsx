@@ -417,7 +417,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
           <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
         )}
         {tab === "arenainfo" && arena && (
-          <ArenaInfoTab arena={arena} onChanged={loadData} dict={dict} />
+          <ArenaInfoTab arena={arena} abonnement={abonnement} onChanged={loadData} dict={dict} />
         )}
         {tab === "speakerteam" && arena && (
           <SpeakerteamSection arenaId={arena.id} arena={arena} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
@@ -608,12 +608,12 @@ function StatistikkSection({ arena, dict, locale }: { arena: Arena; dict: Dictio
 // som så ut som overlappende/duplikate seksjoner. Nå ett skjema, én
 // lagre-knapp, samme feltrekkefølge som registreringen selv, pluss
 // dekningsområdet (kart) rett under.
-function ArenaInfoTab({ arena, onChanged, dict }: { arena: Arena; onChanged: () => void; dict: Dictionary }) {
+function ArenaInfoTab({ arena, abonnement, onChanged, dict }: { arena: Arena; abonnement: Abonnement | null; onChanged: () => void; dict: Dictionary }) {
   return (
     <div>
       <ArenaInfoSection arena={arena} onSaved={onChanged} dict={dict} />
       <div style={{ marginTop: "24px" }}>
-        <GeofenceKartSection arena={arena} onSaved={onChanged} dict={dict} />
+        <GeofenceKartSection arena={arena} abonnement={abonnement} onSaved={onChanged} dict={dict} />
       </div>
     </div>
   );
@@ -791,10 +791,18 @@ function ArenaInfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () 
   );
 }
 
-function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () => void; dict: Dictionary }) {
+type LatLng = { lat: number; lng: number };
+
+function GeofenceKartSection({ arena, abonnement, onSaved, dict }: { arena: Arena; abonnement: Abonnement | null; onSaved: () => void; dict: Dictionary }) {
   const t = dict.minSide.geofence;
   const erDemo = arena.stream_id === ADIENCE_DEMO_STREAM_ID;
   const radiusMax = erDemo ? 2000 : 500;
+  // Selvbetjent polygon-tegning er en abonnementsfordel -- kunden kan da selv
+  // spore opp den nøyaktige konturen på egen arena (f.eks. Wimbledon, Old
+  // Trafford) og verifisere at dekningen ikke lekker utenfor. Uten aktivt
+  // abonnement vises en ev. admin-tegnet polygon fortsatt kun skrivebeskyttet.
+  const erAbonnent = abonnement?.status === "aktiv";
+
   const [localRadius, setLocalRadius] = useState(arena.geofence_radius ?? 300);
   const [pendingLat, setPendingLat] = useState<number | null>(null);
   const [pendingLng, setPendingLng] = useState<number | null>(null);
@@ -802,12 +810,22 @@ function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
 
+  const [geofenceMode, setGeofenceMode] = useState<"sirkel" | "polygon">(
+    erAbonnent && arena.geofence_type === "polygon" ? "polygon" : "sirkel"
+  );
+  const [polygonPoints, setPolygonPoints] = useState<LatLng[]>(
+    Array.isArray(arena.geofence_polygon) ? (arena.geofence_polygon as LatLng[]) : []
+  );
+  const [polygonSaving, setPolygonSaving] = useState(false);
+  const [polygonSaved, setPolygonSaved] = useState(false);
+  const [polygonError, setPolygonError] = useState("");
+
   const harEndring = pendingLat !== null || localRadius !== (arena.geofence_radius ?? 300);
 
   async function handleSave() {
     setSaving(true);
     setError("");
-    const patch: { geofence_radius: number; lat?: number; lng?: number } = { geofence_radius: localRadius };
+    const patch: { geofence_radius: number; lat?: number; lng?: number; geofence_type: "sirkel" } = { geofence_radius: localRadius, geofence_type: "sirkel" };
     if (pendingLat !== null && pendingLng !== null) { patch.lat = pendingLat; patch.lng = pendingLng; }
     const { error } = await supabase.from("arenaer").update(patch).eq("id", arena.id);
     setSaving(false);
@@ -816,15 +834,27 @@ function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: 
     setSaved(true); onSaved(); setTimeout(() => setSaved(false), 3000);
   }
 
+  async function handleSavePolygon() {
+    if (polygonPoints.length < 3) { setPolygonError(t.polygonMinPointsError); return; }
+    setPolygonSaving(true);
+    setPolygonError("");
+    const { error } = await supabase
+      .from("arenaer")
+      .update({ geofence_type: "polygon", geofence_polygon: polygonPoints })
+      .eq("id", arena.id);
+    setPolygonSaving(false);
+    if (error) { setPolygonError(error.message); return; }
+    setPolygonSaved(true); onSaved(); setTimeout(() => setPolygonSaved(false), 3000);
+  }
+
   if (!arena.lat || !arena.lng) {
     return <ManuellPosisjon arena={arena} onSaved={onSaved} dict={dict} />;
   }
 
-  // Polygon er en premium-funksjon (årsabonnement) -- Ådience-admin tegner
-  // den inn for arenaen (se AdminContent.tsx), Min side viser den kun
-  // skrivebeskyttet her. Ingen lagre-knapp, så et tilfeldig klikk i kartet
-  // har ingen effekt -- forsvinner ved neste innlasting.
-  if (arena.geofence_type === "polygon" && Array.isArray(arena.geofence_polygon)) {
+  // Uten aktivt abonnement: en ev. admin-tegnet polygon vises kun
+  // skrivebeskyttet her, som før. Ingen lagre-knapp, så et tilfeldig klikk i
+  // kartet har ingen effekt -- forsvinner ved neste innlasting.
+  if (!erAbonnent && arena.geofence_type === "polygon" && Array.isArray(arena.geofence_polygon)) {
     return (
       <div style={cardStyle}>
         <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.title}</h3>
@@ -846,37 +876,92 @@ function GeofenceKartSection({ arena, onSaved, dict }: { arena: Arena; onSaved: 
     <div style={cardStyle}>
       <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.title}</h3>
       <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "16px" }}>
-        {t.subtitle}
+        {erAbonnent ? t.subscriberSubtitle : t.subtitle}
       </p>
-      <div style={{ height: "360px", borderRadius: "10px", overflow: "hidden", marginBottom: "16px" }}>
-        <ArenaMap
-          lat={pendingLat ?? arena.lat}
-          lng={pendingLng ?? arena.lng}
-          name={arena.arenanavn}
-          radius={localRadius}
-          onMarkerMove={(lat, lng) => { setPendingLat(lat); setPendingLng(lng); }}
-        />
-      </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-        <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{t.radiusLabel}</span>
-        <span style={{ fontSize: "13px", color: "#33D3C4", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>{localRadius} m</span>
-      </div>
-      <input
-        type="range" min={50} max={radiusMax} step={10}
-        value={localRadius}
-        onChange={(e) => setLocalRadius(Number(e.target.value))}
-        style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer" }}
-      />
-      {!erDemo && (
-        <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
-          {t.radiusMaxHint}
-        </p>
+
+      {erAbonnent && (
+        <div style={{ display: "flex", gap: "8px", marginBottom: "16px" }}>
+          <button
+            type="button"
+            onClick={() => setGeofenceMode("sirkel")}
+            style={{
+              border: geofenceMode === "sirkel" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
+              backgroundColor: geofenceMode === "sirkel" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
+              color: geofenceMode === "sirkel" ? "#33D3C4" : "rgba(255,255,255,0.5)",
+              borderRadius: "8px", padding: "8px 14px", fontSize: "13px", cursor: "pointer",
+              fontFamily: "var(--font-inter), system-ui, sans-serif",
+            }}
+          >
+            {t.modeSirkel}
+          </button>
+          <button
+            type="button"
+            onClick={() => setGeofenceMode("polygon")}
+            style={{
+              border: geofenceMode === "polygon" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
+              backgroundColor: geofenceMode === "polygon" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
+              color: geofenceMode === "polygon" ? "#33D3C4" : "rgba(255,255,255,0.5)",
+              borderRadius: "8px", padding: "8px 14px", fontSize: "13px", cursor: "pointer",
+              fontFamily: "var(--font-inter), system-ui, sans-serif",
+            }}
+          >
+            {t.modePolygon}
+          </button>
+        </div>
       )}
-      {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
-      {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.saved}</p>}
-      <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
-        {saving ? t.saving : t.saveButton}
-      </button>
+
+      {geofenceMode === "polygon" ? (
+        <>
+          <div style={{ height: "360px", borderRadius: "10px", overflow: "hidden", marginBottom: "16px" }}>
+            <GeofenceMap
+              lat={arena.lat}
+              lng={arena.lng}
+              initialPoints={polygonPoints}
+              onChange={setPolygonPoints}
+            />
+          </div>
+          <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginBottom: "16px" }}>
+            {t.polygonMaxHint}
+          </p>
+          {polygonError && <p style={{ color: "#D94F4F", fontSize: "13px", marginBottom: "12px" }}>{polygonError}</p>}
+          {polygonSaved && <p style={{ color: "#33D3C4", fontSize: "13px", marginBottom: "12px" }}>{t.saved}</p>}
+          <button onClick={handleSavePolygon} disabled={polygonSaving} style={{ ...tealBtnStyle, opacity: polygonSaving ? 0.5 : 1 }}>
+            {polygonSaving ? t.saving : t.polygonSaveButton}
+          </button>
+        </>
+      ) : (
+        <>
+          <div style={{ height: "360px", borderRadius: "10px", overflow: "hidden", marginBottom: "16px" }}>
+            <ArenaMap
+              lat={pendingLat ?? arena.lat}
+              lng={pendingLng ?? arena.lng}
+              name={arena.arenanavn}
+              radius={localRadius}
+              onMarkerMove={(lat, lng) => { setPendingLat(lat); setPendingLng(lng); }}
+            />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{t.radiusLabel}</span>
+            <span style={{ fontSize: "13px", color: "#33D3C4", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>{localRadius} m</span>
+          </div>
+          <input
+            type="range" min={50} max={radiusMax} step={10}
+            value={localRadius}
+            onChange={(e) => setLocalRadius(Number(e.target.value))}
+            style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer" }}
+          />
+          {!erDemo && (
+            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
+              {t.radiusMaxHint}
+            </p>
+          )}
+          {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
+          {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.saved}</p>}
+          <button onClick={handleSave} disabled={saving || !harEndring} style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || !harEndring) ? 0.5 : 1 }}>
+            {saving ? t.saving : t.saveButton}
+          </button>
+        </>
+      )}
     </div>
   );
 }
