@@ -1576,7 +1576,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
       {!arena.stream_id ? (
         <div style={cardStyle}>
-          <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
+          <h3 style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
           <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
             {t.noStreamId}
           </p>
@@ -1597,7 +1597,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
               den åpner et ekte, live sendingsverktøy, så den fortjener mer
               visuell tyngde enn en nøytral ghost-knapp. */}
           <div style={cardStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.castToolTitle}</h3>
+            <h3 style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.castToolTitle}</h3>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
               {t.castToolHelp}
             </p>
@@ -1636,7 +1636,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
               et fjerde kort i samme grid som QR-kodene, samme størrelse og
               stil, i stedet for en bred stripe som brøt rytmen. */}
           <div style={cardStyle}>
-            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
+            <h3 style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
               {t.qrHelpText}
             </p>
@@ -1685,7 +1685,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
       )}
 
       <div style={cardStyle}>
-        <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.materialTitle}</h3>
+        <h3 style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.materialTitle}</h3>
         <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
           {t.materialSubtitle}
         </p>
