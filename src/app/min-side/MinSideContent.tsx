@@ -54,6 +54,15 @@ type Tab = "oversikt" | "arenainfo" | "speakerteam" | "statistikk" | "media";
 
 const TAB_IDS: Tab[] = ["oversikt", "arenainfo", "speakerteam", "statistikk", "media"];
 
+// Leser aktiv fane fra URL-hash ved første last, slik at en refresh (eller en
+// delt lenke) beholder fanen du sto på i stedet for å alltid hoppe tilbake
+// til Oversikt -- samme mønster som initialStreamIdFromUrl i CastContent.tsx.
+function initialTabFromUrl(): Tab {
+  if (typeof window === "undefined") return "oversikt";
+  const hash = window.location.hash.replace("#", "");
+  return (TAB_IDS as string[]).includes(hash) ? (hash as Tab) : "oversikt";
+}
+
 // Samme lister som registrer/RegistrerPageContent.tsx sitt registreringsskjema
 // bruker — må holdes i sync manuelt (ingen delt konstant-fil i denne
 // kodebasen), slik at et lagret KATEGORI/LAND/KAPASITET-valg her alltid
@@ -235,7 +244,7 @@ function LoginScreen({ dict, locale }: { dict: Dictionary; locale: Locale }) {
 function Dashboard({ session, dict, locale }: { session: Session; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide;
   const homeHref = locale === "en" ? "/en" : "/";
-  const [tab, setTab] = useState<Tab>("oversikt");
+  const [tab, setTab] = useState<Tab>(initialTabFromUrl);
   const [loading, setLoading] = useState(true);
   const [arena, setArena] = useState<Arena | null>(null);
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null);
@@ -381,7 +390,13 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
             return (
               <button
                 key={id}
-                onClick={() => setTab(id)}
+                onClick={() => {
+                  setTab(id);
+                  // replaceState (ikke pushState) -- bytte fane skal ikke
+                  // fylle opp historikken med ett tilbake-steg per klikk,
+                  // bare sørge for at en refresh havner riktig sted.
+                  window.history.replaceState(null, "", `#${id}`);
+                }}
                 onMouseEnter={(e) => { if (!aktiv) e.currentTarget.style.color = "#ffffff"; }}
                 onMouseLeave={(e) => { if (!aktiv) e.currentTarget.style.color = "rgba(255,255,255,0.6)"; }}
                 style={{
@@ -1653,7 +1668,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                       </div>
                     )}
                   </div>
-                  <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{k.tittel}</div>
+                  <div style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{k.tittel}</div>
                   <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "14px" }}>{k.beskrivelse}</p>
                   {k.data && (
                     <a href={k.data} download={k.fil} style={{ ...tealBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
@@ -1673,7 +1688,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                     </div>
                   )}
                 </div>
-                <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{t.posterCardTitle}</div>
+                <div style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 600, fontSize: "14px", marginBottom: "4px" }}>{t.posterCardTitle}</div>
                 <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "14px" }}>{t.posterCardDesc}</p>
                 <button onClick={printPoster} disabled={!qrAdience} style={{ ...tealBtnStyle, width: "100%", opacity: qrAdience ? 1 : 0.5 }}>
                   {t.printPoster}
@@ -1693,7 +1708,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
           {pdfKort.map((k) => (
             <div key={k.fil} style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "20px", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div>
-                <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "6px" }}>{k.tittel}</div>
+                <div style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 600, fontSize: "14px", marginBottom: "6px" }}>{k.tittel}</div>
                 <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "16px" }}>{k.beskrivelse}</p>
               </div>
               <a href={`/media/${k.fil}`} download style={{ ...tealBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
