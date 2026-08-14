@@ -1530,11 +1530,14 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
     { data: qrHvit, fil: `adience-qr-hvit-${arena.arenanavn}.png`, tittel: t.qrCardWhite.title, beskrivelse: t.qrCardWhite.desc },
     { data: qrTransparent, fil: `adience-qr-transparent-${arena.arenanavn}.png`, tittel: t.qrCardTransparent.title, beskrivelse: t.qrCardTransparent.desc },
   ];
+  // Alle fire finnes nå i en engelsk variant også (samme filnavn + "-en"
+  // suffiks) -- engelsk visning laster automatisk ned den engelske PDF-en.
+  const pdfSuffix = locale === "en" ? "-en.pdf" : ".pdf";
   const pdfKort = [
-    { fil: "slik-bruker-du-adience.pdf", tittel: t.pdfCard1.title, beskrivelse: t.pdfCard1.desc },
-    { fil: "inspirasjon-ansatte-sikkerhet.pdf", tittel: t.pdfCard2.title, beskrivelse: t.pdfCard2.desc },
-    { fil: "speakerteam-guide.pdf", tittel: t.pdfCardSpeakerteam.title, beskrivelse: t.pdfCardSpeakerteam.desc },
-    { fil: "sponsor-partner-speakerteam.pdf", tittel: t.pdfCardSponsor.title, beskrivelse: t.pdfCardSponsor.desc },
+    { fil: `slik-bruker-du-adience${pdfSuffix}`, tittel: t.pdfCard1.title, beskrivelse: t.pdfCard1.desc },
+    { fil: `inspirasjon-ansatte-sikkerhet${pdfSuffix}`, tittel: t.pdfCard2.title, beskrivelse: t.pdfCard2.desc },
+    { fil: `speakerteam-guide${pdfSuffix}`, tittel: t.pdfCardSpeakerteam.title, beskrivelse: t.pdfCardSpeakerteam.desc },
+    { fil: `sponsor-partner-speakerteam${pdfSuffix}`, tittel: t.pdfCardSponsor.title, beskrivelse: t.pdfCardSponsor.desc },
   ];
 
   // Plakaten er unik per arena (ekte QR-kode + arenanavn), så den kan ikke
