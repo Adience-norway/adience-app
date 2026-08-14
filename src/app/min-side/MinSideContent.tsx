@@ -1574,31 +1574,34 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-      <div>
-        {!arena.stream_id ? (
-          <>
-            <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
-            <p style={{ ...cardStyle, padding: "20px", fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
-              {t.noStreamId}
-            </p>
-          </>
-        ) : (
-          <>
-            {/* Stream-ID + direkte lenke til castingverktøyet — dette er det
-                arenaens EGET personale (den som skal sende) trenger, ikke
-                publikum (publikum bruker QR-kodene under). Egen overskrift,
-                adskilt fra QR-forklaringen under, siden det er to helt
-                forskjellige funksjoner. ID-en er permanent — den slutter
-                aldri å eksistere, uavhengig av abonnement/pilotperiode; kun
-                selve muligheten til å faktisk starte en sending kan bli
-                stengt da. Cast-lenken forhåndsfyller ID-en på castingsiden
-                (se initialStreamIdFromUrl i CastContent.tsx), så personalet
-                slipper å skrive den inn selv. */}
+      {!arena.stream_id ? (
+        <div style={cardStyle}>
+          <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
+            {t.noStreamId}
+          </p>
+        </div>
+      ) : (
+        <>
+          {/* Stream-ID + direkte lenke til castingverktøyet — dette er det
+              arenaens EGET personale (den som skal sende) trenger, ikke
+              publikum (publikum bruker QR-kodene under). Egen ramme,
+              adskilt fra QR-seksjonen under, siden det er to helt
+              forskjellige funksjoner — samme kort-mønster som
+              Informasjonsmateriell. ID-en er permanent — den slutter aldri å
+              eksistere, uavhengig av abonnement/pilotperiode; kun selve
+              muligheten til å faktisk starte en sending kan bli stengt da.
+              Cast-lenken forhåndsfyller ID-en på castingsiden (se
+              initialStreamIdFromUrl i CastContent.tsx), så personalet
+              slipper å skrive den inn selv. Åpne-knappen er korall/rød —
+              den åpner et ekte, live sendingsverktøy, så den fortjener mer
+              visuell tyngde enn en nøytral ghost-knapp. */}
+          <div style={cardStyle}>
             <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.castToolTitle}</h3>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
               {t.castToolHelp}
             </p>
-            <div style={{ ...cardStyle, padding: "16px 20px", marginBottom: "28px", display: "flex", flexDirection: "column" as const, gap: "14px" }}>
+            <div style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "16px 20px", display: "flex", flexDirection: "column" as const, gap: "14px" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" as const }}>
                 <div>
                   <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "4px" }}>{t.streamIdLabel}</div>
@@ -1620,24 +1623,26 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
               <a
                 href={`${locale === "en" ? "/en" : ""}/cast?id=${arena.stream_id}`}
                 target="_blank" rel="noopener noreferrer"
-                style={{ ...ghostBtnStyle, textDecoration: "none", textAlign: "center" as const }}
+                style={{ ...coralBtnStyleAuto, textDecoration: "none", textAlign: "center" as const, display: "block" }}
               >
                 {t.openCastTool}
               </a>
             </div>
+          </div>
 
-            {/* QR-forklaringen sitter nå rett over selve QR-kortene den
-                faktisk beskriver, i stedet for over Stream-ID/passord-boksen
-                over (som er en helt annen funksjon). Plakaten er nå et
-                fjerde kort i samme grid som QR-kodene, samme størrelse og
-                stil, i stedet for en bred stripe som brøt rytmen. */}
+          {/* QR-forklaringen sitter nå rett over selve QR-kortene den
+              faktisk beskriver, i egen ramme, i stedet for over Stream-ID/
+              passord-boksen (som er en helt annen funksjon). Plakaten er nå
+              et fjerde kort i samme grid som QR-kodene, samme størrelse og
+              stil, i stedet for en bred stripe som brøt rytmen. */}
+          <div style={cardStyle}>
             <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.qrTitlePrefix} {arena.arenanavn}</h3>
             <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
               {t.qrHelpText}
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
               {qrKort.map((k) => (
-                <div key={k.fil} style={{ ...cardStyle, padding: "20px", textAlign: "center" }}>
+                <div key={k.fil} style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "20px", textAlign: "center" }}>
                   <div style={{ backgroundColor: "#ffffff", borderRadius: "10px", padding: "12px", marginBottom: "14px", display: "inline-block", minWidth: "140px", minHeight: "140px" }}>
                     {k.data ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -1657,7 +1662,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                   )}
                 </div>
               ))}
-              <div style={{ ...cardStyle, padding: "20px", textAlign: "center" }}>
+              <div style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: "10px", padding: "20px", textAlign: "center" }}>
                 <div style={{ backgroundColor: "#ffffff", borderRadius: "10px", padding: "12px", marginBottom: "14px", display: "inline-block", minWidth: "140px", minHeight: "140px" }}>
                   {qrAdience ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -1675,9 +1680,9 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                 </button>
               </div>
             </div>
-          </>
-        )}
-      </div>
+          </div>
+        </>
+      )}
 
       <div style={cardStyle}>
         <h3 style={{ fontSize: "15px", fontWeight: 600, marginBottom: "4px" }}>{t.materialTitle}</h3>
@@ -1691,7 +1696,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                 <div style={{ fontWeight: 600, fontSize: "14px", marginBottom: "6px" }}>{k.tittel}</div>
                 <p style={{ fontSize: "12.5px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "16px" }}>{k.beskrivelse}</p>
               </div>
-              <a href={`/media/${k.fil}`} download style={{ ...ghostBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
+              <a href={`/media/${k.fil}`} download style={{ ...tealBtnStyle, display: "block", textDecoration: "none", textAlign: "center" }}>
                 {t.downloadPdf}
               </a>
             </div>
