@@ -496,6 +496,15 @@ function StandardInfokarusellSeksjon({ dict }: { dict: Dictionary }) {
   );
 }
 
+type GodkjentAdmin = {
+  id: string;
+  epost: string;
+  fornavn: string | null;
+  etternavn: string | null;
+  arena_id: string | null;
+  arenanavn: string | null;
+};
+
 function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Locale }) {
   const t = dict.admin.adminManager;
   const [query, setQuery] = useState("");
@@ -504,6 +513,28 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
   const [searched, setSearched] = useState(false);
   const [feilmelding, setFeilmelding] = useState("");
   const [oppdaterer, setOppdaterer] = useState<string | null>(null);
+
+  const [godkjente, setGodkjente] = useState<GodkjentAdmin[]>([]);
+  const [lasterGodkjente, setLasterGodkjente] = useState(true);
+
+  const fetchGodkjente = useCallback(async () => {
+    setLasterGodkjente(true);
+    const { data } = await supabase
+      .from("brukere")
+      .select("id, epost, fornavn, etternavn, arena_id")
+      .eq("er_adience_admin", true)
+      .order("epost");
+    const arenaIder = [...new Set((data ?? []).map(b => b.arena_id).filter((id): id is string => !!id))];
+    let navnPerId = new Map<string, string>();
+    if (arenaIder.length > 0) {
+      const { data: arenaNavn } = await supabase.from("arenaer").select("id, arenanavn").in("id", arenaIder);
+      navnPerId = new Map((arenaNavn ?? []).map(a => [a.id, a.arenanavn]));
+    }
+    setGodkjente((data ?? []).map(b => ({ ...b, arenanavn: b.arena_id ? navnPerId.get(b.arena_id) ?? null : null })));
+    setLasterGodkjente(false);
+  }, []);
+
+  useEffect(() => { fetchGodkjente(); }, [fetchGodkjente]);
 
   const [visInviter, setVisInviter] = useState(false);
   const [inviteEpost, setInviteEpost] = useState("");
@@ -642,6 +673,16 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
     setOppdaterer(null);
     if (error) { setFeilmelding(error.message); return; }
     setTreff(prev => prev.map(k => k.id === kandidat.id ? { ...k, er_adience_admin: !k.er_adience_admin } : k));
+    fetchGodkjente();
+  }
+
+  async function fjernGodkjent(admin: GodkjentAdmin) {
+    setOppdaterer(admin.id);
+    const { error } = await supabase.from("brukere").update({ er_adience_admin: false }).eq("id", admin.id);
+    setOppdaterer(null);
+    if (error) { setFeilmelding(error.message); return; }
+    setGodkjente(prev => prev.filter(a => a.id !== admin.id));
+    setTreff(prev => prev.map(k => k.id === admin.id ? { ...k, er_adience_admin: false } : k));
   }
 
   function prefillInviter(kandidat: Kandidat) {
@@ -657,6 +698,51 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
     <div style={{ marginTop: "16px" }}>
       <h2 style={{ ...pageHeadingStyle, fontSize: "20px", marginBottom: "16px" }}>{t.title}</h2>
       <div style={cardStyle}>
+        <div style={{ marginBottom: "24px", paddingBottom: "24px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+          <h3 style={{ ...sectionHeadingStyle, marginBottom: "12px" }}>{t.currentAdminsTitle}</h3>
+          {lasterGodkjente ? (
+            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "14px" }}>{t.loadingCurrentAdmins}</p>
+          ) : godkjente.length === 0 ? (
+            <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "14px" }}>{t.noCurrentAdmins}</p>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr style={theadRowStyle}>
+                    <th style={thStyle}>{t.thName}</th>
+                    <th style={thStyle}>{t.thOrg}</th>
+                    <th style={thStyle}>{t.thEmail}</th>
+                    <th style={{ ...thStyle, textAlign: "center" }}>{t.thAction}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {godkjente.map((admin, i) => (
+                    <tr key={admin.id} style={{ backgroundColor: i % 2 === 1 ? "rgba(255,255,255,0.02)" : "transparent" }}>
+                      <td style={{ padding: "14px 20px", fontSize: "14px" }}>
+                        {[admin.fornavn, admin.etternavn].filter(Boolean).join(" ") || "—"}
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: "14px", color: "rgba(255,255,255,0.6)" }}>
+                        {admin.arenanavn ?? "—"}
+                      </td>
+                      <td style={{ padding: "14px 20px", fontSize: "14px", color: "rgba(255,255,255,0.6)" }}>{admin.epost}</td>
+                      <td style={{ padding: "14px 20px", textAlign: "center" }}>
+                        <button
+                          onClick={() => fjernGodkjent(admin)}
+                          disabled={oppdaterer === admin.id}
+                          style={{ ...outlineCoralBtnStyle, padding: "8px 14px" }}
+                        >
+                          {oppdaterer === admin.id ? "…" : t.removeAdmin}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+
+        <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.searchSectionTitle}</h3>
         <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", marginBottom: "20px", lineHeight: 1.6 }}>
           {t.helpText}
         </p>
@@ -3093,6 +3179,7 @@ const modalOverlayStyle: React.CSSProperties = { position: "fixed", inset: 0, ba
 const modalBoxStyle: React.CSSProperties = { backgroundColor: "#1E293B", border: "1px solid rgba(51,211,196,0.2)", borderRadius: "16px", padding: "36px", width: "100%", maxWidth: "480px", color: "#ffffff" };
 const inputStyle: React.CSSProperties = { width: "100%", backgroundColor: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", padding: "12px 16px", color: "#ffffff", fontSize: "15px", outline: "none", fontFamily: "var(--font-inter), system-ui, sans-serif", transition: "border-color 0.2s" };
 const pageHeadingStyle: React.CSSProperties = { fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 800, fontSize: "28px", letterSpacing: "-0.02em" };
+const sectionHeadingStyle: React.CSSProperties = { fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 700, fontSize: "17px", color: "#fff" };
 const fieldLabelStyle: React.CSSProperties = { display: "block", fontSize: "13px", fontWeight: 500, color: "rgba(255,255,255,0.6)", marginBottom: "8px", letterSpacing: "0.03em" };
 const emptyStyle: React.CSSProperties = { textAlign: "center", padding: "80px 0", color: "rgba(255,255,255,0.3)", fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "14px" };
 const ghostBtnStyle: React.CSSProperties = { backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px", padding: "10px 16px", color: "rgba(255,255,255,0.6)", fontSize: "13px", cursor: "pointer", fontFamily: "var(--font-inter), system-ui, sans-serif" };

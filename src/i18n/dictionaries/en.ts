@@ -568,6 +568,10 @@ const en: Dictionary = {
     adminManager: {
       title: "Administrators",
       helpText: "Search freely by name, organization, or email — you'll see everyone matching, whether they already have an account or are just registered on a speaker team. Choose who should become an admin.",
+      currentAdminsTitle: "Approved administrators",
+      loadingCurrentAdmins: "Loading administrators…",
+      noCurrentAdmins: "No administrators yet.",
+      searchSectionTitle: "Make someone an administrator",
       inviteButton: "+ Invite new administrator",
       inviteEmailPlaceholder: "name@email.com",
       inviteFirstNamePlaceholder: "First name",

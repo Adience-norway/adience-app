@@ -787,6 +787,10 @@ const no: {
     adminManager: {
       title: "Administratorer",
       helpText: "Søk fritt på navn, organisasjon eller e-post — du får opp alle som matcher, enten de allerede har konto eller bare er registrert i et speakerteam. Velg hvem som skal bli admin.",
+      currentAdminsTitle: "Godkjente administratorer",
+      loadingCurrentAdmins: "Laster administratorer…",
+      noCurrentAdmins: "Ingen administratorer ennå.",
+      searchSectionTitle: "Gjør noen til administrator",
       inviteButton: "+ Inviter ny administrator",
       inviteEmailPlaceholder: "navn@epost.no",
       inviteFirstNamePlaceholder: "Fornavn",
