@@ -1068,6 +1068,9 @@ function SpeakerteamSection({
 
   return (
     <div>
+      <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px", lineHeight: 1.6 }}>
+        {t.introText}
+      </p>
       <div style={toolbarStyle}>
         <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px" }}>{speakerteam.length} {t.countSuffix}</span>
         <button onClick={() => setShowForm((v) => !v)} style={tealBtnStyle}>

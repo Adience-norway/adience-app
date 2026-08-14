@@ -441,6 +441,8 @@ const en: Dictionary = {
       addressSaved: "Address saved ✓",
     },
     speakerteam: {
+      introTitle: "Speaker team",
+      introText: "This is where you add the members of your speaker team — lead speaker, info speaker, sound engineer, and other roles. Each speaker works through the course modules and a short question per module below, and can download their own certificate once everything's complete.",
       countSuffix: "members",
       cancel: "Cancel",
       addSpeaker: "+ Add speaker",

@@ -157,6 +157,7 @@ const no: {
       saveAddressButton: string; addressSaved: string;
     };
     speakerteam: {
+      introTitle: string; introText: string;
       countSuffix: string; cancel: string; addSpeaker: string;
       fieldFornavn: string; fieldEtternavn: string; fieldEpost: string; fieldRolle: string; saving: string; addButton: string;
       emptyState: string; deleteButton: string; confirmDelete: string;
@@ -661,6 +662,8 @@ const no: {
       addressSaved: "Adresse lagret ✓",
     },
     speakerteam: {
+      introTitle: "Speakerteam",
+      introText: "Her legger dere til medlemmene i speakerteamet — hovedspeaker, informasjonsspeaker, lydmann og andre roller. Hver speaker går gjennom kursmodulene og et lite spørsmål per modul under, og kan laste ned et eget sertifikat når alt er fullført.",
       countSuffix: "medlemmer",
       cancel: "Avbryt",
       addSpeaker: "+ Legg til speaker",
