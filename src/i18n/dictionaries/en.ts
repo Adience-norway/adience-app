@@ -21,10 +21,10 @@ const en: Dictionary = {
     },
     intro: {
       heading: "What is Ådience?",
-      body: "Ådience is a live audio platform for sports and event venues and organizers, built by StoryPhone AS (org. no. 823773692, Hamar, Norway). Audiences physically present at the venue can listen to exclusive audio — commentary and other audio content — through their own headphones, with under 0.5 seconds of delay via geofencing technology. The service is global — any venue, anywhere in the world, can register and start using Ådience, provided there is network coverage on site.",
+      body: "Ådience is a live audio platform for sports and event venues and organizers, built by StoryPhone AS (org. no. 823773692, Hamar, Norway). Audiences physically present at the venue can listen to exclusive audio — commentary and other audio content — through their own headphones, in real time via geofencing technology. The service is global — any venue, anywhere in the world, can register and start using Ådience, provided there is network coverage on site.",
     },
     stats: {
-      delay: { value: "0.5 sec", label: "Delay" },
+      delay: { value: "Real-time", label: "Delay" },
       uptime: { value: "99.99%", label: "Uptime" },
       encryption: { value: "256-bit", label: "AES encryption" },
     },
@@ -36,8 +36,8 @@ const en: Dictionary = {
         description: "Only the audience inside the venue gets access, via geofencing. No one can listen from the couch at home — the content stays exclusive to those physically present.",
       },
       card2: {
-        title: "Under 0.5 seconds of delay",
-        description: "A proprietary low-latency protocol keeps the audio in sync with what's happening on the field. You hear it in time with what you see — always.",
+        title: "Real time — no noticeable delay",
+        description: "Built on the same real-time streaming technology (Ant Media Server) that Fox TV Stations, among others, uses for live news broadcasts. You hear it in time with what you see — always.",
       },
       card3: {
         title: "Geofencing technology",
@@ -867,6 +867,7 @@ const en: Dictionary = {
     statusError: "Error",
     listenersNow: "Listeners now",
     delayLabel: "Delay",
+    delayValue: "Real-time",
     serverNote: "Connecting to Ådience's own Ant Media Server",
   },
 };

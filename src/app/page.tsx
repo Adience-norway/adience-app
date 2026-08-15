@@ -29,7 +29,7 @@ const serviceJsonLd = {
   "@type": "Service",
   serviceType: "Live-lydplattform for arenaer og arrangementer",
   name: "Ådience",
-  description: "Ådience lar publikum som er fysisk til stede på en arena lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, med under 0,5 sekunders forsinkelse via geofencing-teknologi.",
+  description: "Ådience lar publikum som er fysisk til stede på en arena lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, i sanntid via geofencing-teknologi.",
   provider: {
     "@type": "Organization",
     name: "StoryPhone AS",

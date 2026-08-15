@@ -648,7 +648,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
               </div>
               <div style={statBoxStyle}>
                 <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "28px", color: "#33D3C4", fontWeight: 500 }}>
-                  0,5 sek
+                  {t.delayValue}
                 </div>
                 <div style={statLabelStyle}>{t.delayLabel}</div>
               </div>

@@ -25,7 +25,7 @@ const serviceJsonLd = {
   "@type": "Service",
   serviceType: "Live audio platform for venues and events",
   name: "Ådience",
-  description: "Ådience lets audiences physically present at a venue listen to exclusive audio — commentary and other audio content — through their own headphones, with under 0.5 seconds of delay via geofencing technology.",
+  description: "Ådience lets audiences physically present at a venue listen to exclusive audio — commentary and other audio content — through their own headphones, in real time via geofencing technology.",
   provider: {
     "@type": "Organization",
     name: "StoryPhone AS",

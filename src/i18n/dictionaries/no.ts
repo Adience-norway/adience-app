@@ -220,7 +220,7 @@ const no: {
     passordOk: string; passordFeil: string; passordPaakrevd: string;
     connecting: string; stopSending: string; startSending: string;
     statusIdle: string; statusConnecting: string; statusLive: string; statusError: string;
-    listenersNow: string; delayLabel: string;
+    listenersNow: string; delayLabel: string; delayValue: string;
     serverNote: string;
   };
 } = {
@@ -244,10 +244,10 @@ const no: {
     },
     intro: {
       heading: "Hva er Ådience?",
-      body: "Ådience er en live-lydplattform for arenaer og arrangører innen idrett og kultur, utviklet av StoryPhone AS (org.nr. 823773692, Hamar). Publikum som er fysisk til stede på arenaen kan lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, med under 0,5 sekunders forsinkelse via geofencing-teknologi. Tjenesten er global — enhver arena, hvor som helst i verden, kan registrere seg og ta i bruk Ådience, forutsatt nettverksdekning på stedet.",
+      body: "Ådience er en live-lydplattform for arenaer og arrangører innen idrett og kultur, utviklet av StoryPhone AS (org.nr. 823773692, Hamar). Publikum som er fysisk til stede på arenaen kan lytte til eksklusiv lyd — kommentarer og annet lydinnhold — i egne hodetelefoner, i sanntid via geofencing-teknologi. Tjenesten er global — enhver arena, hvor som helst i verden, kan registrere seg og ta i bruk Ådience, forutsatt nettverksdekning på stedet.",
     },
     stats: {
-      delay: { value: "0,5 sek", label: "Forsinkelse" },
+      delay: { value: "Sanntid", label: "Forsinkelse" },
       uptime: { value: "99.99%", label: "Oppetid" },
       encryption: { value: "256-bit", label: "AES-kryptering" },
     },
@@ -259,8 +259,8 @@ const no: {
         description: "Kun publikum inne på arenaen får tilgang via geofencing. Ingen kan lytte fra sofaen hjemme — innholdet forblir eksklusivt for de som er fysisk til stede.",
       },
       card2: {
-        title: "Under 0,5 sekunders forsinkelse",
-        description: "Proprietær lav-latens protokoll sikrer at lyden er synkronisert med det som skjer på banen. Du hører det i takt med det du ser — alltid.",
+        title: "Sanntid — ingen merkbar forsinkelse",
+        description: "Bygget på samme sanntids-strømmeteknologi (Ant Media Server) som blant annet Fox TV Stations bruker til direkte nyhetssendinger. Du hører det i takt med det du ser — alltid.",
       },
       card3: {
         title: "Geofencing teknologi",
@@ -1093,6 +1093,7 @@ const no: {
     statusError: "Feil",
     listenersNow: "Lyttere nå",
     delayLabel: "Forsinkelse",
+    delayValue: "Sanntid",
     serverNote: "Kobler til Ådience sin egen Ant Media Server",
   },
 };
