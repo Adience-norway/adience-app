@@ -1891,8 +1891,8 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
   }
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const [savedRadius, setSavedRadius] = useState(arena.geofence_radius ?? 300);
-  const [localRadius, setLocalRadius] = useState(arena.geofence_radius ?? 300);
+  const [savedRadius, setSavedRadius] = useState(arena.geofence_radius ?? 250);
+  const [localRadius, setLocalRadius] = useState(arena.geofence_radius ?? 250);
   const [radiusSaving, setRadiusSaving] = useState(false);
   const [radiusJustSaved, setRadiusJustSaved] = useState(false);
   const [radiusError, setRadiusError] = useState<string | null>(null);
@@ -2228,16 +2228,16 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
                     <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>{t.radiusLabel}</span>
                     <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                       <input
-                        type="number" min={50} max={2000} step={10}
+                        type="number" min={50} max={1000} step={10}
                         value={localRadius}
-                        onChange={e => { setLocalRadius(Math.min(2000, Math.max(50, Number(e.target.value)))); setRadiusError(null); setOverlapWarnings([]); }}
+                        onChange={e => { setLocalRadius(Math.min(1000, Math.max(50, Number(e.target.value)))); setRadiusError(null); setOverlapWarnings([]); }}
                         style={{ width: "72px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "4px 8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
                       />
                       <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>
                     </div>
                   </div>
                   <input
-                    type="range" min={50} max={2000} step={10}
+                    type="range" min={50} max={1000} step={10}
                     value={localRadius}
                     onChange={e => { setLocalRadius(Number(e.target.value)); setRadiusError(null); setOverlapWarnings([]); }}
                     style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer", marginBottom: "12px" }}
@@ -2513,7 +2513,7 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
               <InfoRow label={t.capacity} value={arena.kapasitet ?? "—"} />
               <InfoRow label={t.orgNumber}    value={arena.org_nummer ?? "—"} mono />
               {hasCoords && <InfoRow label={t.coordinates} value={`${arena.lat?.toFixed(5)}, ${arena.lng?.toFixed(5)}`} mono />}
-              <InfoRow label={t.geofence}  value={`${arena.geofence_radius ?? 300}${t.radiusSuffix}`} />
+              <InfoRow label={t.geofence}  value={`${arena.geofence_radius ?? 250}${t.radiusSuffix}`} />
               <InfoRow label={t.registered} value={new Date(arena.opprettet).toLocaleDateString(dateLocale)} />
             </div>
           </div>
@@ -2793,7 +2793,7 @@ function AddArenaModal({ onClose, onSaved, arena: editingArena, dict }: {
     etternavn:    editingArena?.etternavn    ?? "",
     telefon:      editingArena?.telefon      ?? "",
     epost:        editingArena?.epost        ?? "",
-    geofence_radius: editingArena?.geofence_radius ?? 300,
+    geofence_radius: editingArena?.geofence_radius ?? 250,
   });
   const [manualLat, setManualLat] = useState(editingArena?.lat?.toFixed(6) ?? "");
   const [manualLng, setManualLng] = useState(editingArena?.lng?.toFixed(6) ?? "");
@@ -3192,16 +3192,16 @@ function AddArenaModal({ onClose, onSaved, arena: editingArena, dict }: {
           <ModalField label={t.fieldGeofenceRadius}>
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <input
-                type="range" min={50} max={2000} step={10}
+                type="range" min={50} max={1000} step={10}
                 value={form.geofence_radius}
                 onChange={e => setForm(prev => ({ ...prev, geofence_radius: Number(e.target.value) }))}
                 style={{ flex: 1, accentColor: "#33D3C4", cursor: "pointer" }}
               />
               <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
                 <input
-                  type="number" min={50} max={2000} step={10}
+                  type="number" min={50} max={1000} step={10}
                   value={form.geofence_radius}
-                  onChange={e => setForm(prev => ({ ...prev, geofence_radius: Math.min(2000, Math.max(50, Number(e.target.value))) }))}
+                  onChange={e => setForm(prev => ({ ...prev, geofence_radius: Math.min(1000, Math.max(50, Number(e.target.value))) }))}
                   style={{ width: "64px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
                 />
                 <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>

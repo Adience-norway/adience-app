@@ -484,7 +484,7 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
     arrangementsnavn: "", kategori: "", adresse_gate: "", postnummer: "", by: "",
     land: "Norge", org_nummer: "", fornavn: "", etternavn: "", epost: "", telefon: "", passord: "",
     periode_start: today, periode_slutt: today,
-    geofence_radius: 300, gdpr: false,
+    geofence_radius: 250, gdpr: false,
   });
 
   const [lat, setLat] = useState<number | null>(null);
@@ -819,7 +819,7 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
           <FormField label={`${t.engangsForm.geofenceLabel} ${form.geofence_radius} m`}>
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               <input
-                type="range" name="geofence_radius" min={50} max={2000} step={10}
+                type="range" name="geofence_radius" min={50} max={1000} step={10}
                 value={form.geofence_radius} onChange={handleChange}
                 style={{ flex: 1, accentColor: "#33D3C4", cursor: "pointer" }}
               />
