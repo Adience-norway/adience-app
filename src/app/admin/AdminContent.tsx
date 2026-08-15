@@ -1662,6 +1662,142 @@ function ArenaRow({ arena, odd, onToggle, onClick, dict }: {
   );
 }
 
+/* ─── ARENA-TILGANGER (flerbruker-adgang, se arena_tilganger) ─── */
+
+type ArenaTilgang = {
+  id: string;
+  rolle: "eier" | "operator";
+  bruker_id: string;
+  epost: string;
+  fornavn: string | null;
+  etternavn: string | null;
+};
+
+type ArenaTilgangRad = {
+  id: string;
+  rolle: "eier" | "operator";
+  bruker_id: string;
+  brukere: { epost: string; fornavn: string | null; etternavn: string | null } | null;
+};
+
+// En person kan ha tilgang til flere arenaer med ulik rolle per arena --
+// 'eier' er full tilgang, 'operator' er begrenset til holdmusikk/infotavle/
+// Media (se enforce_operator_column_scope() og RLS-policyene i databasen).
+// Ingen selvbetjent "inviter medeier"-flyt finnes ennå, så dette gjøres her
+// av Ådience-admin: søk opp en EKSISTERENDE brukerkonto på e-post og gi den
+// tilgang til denne arenaen.
+function ArenaTilgangSeksjon({ arenaId, dict }: { arenaId: string; dict: Dictionary }) {
+  const t = dict.admin.tilgang;
+  const [tilganger, setTilganger] = useState<ArenaTilgang[]>([]);
+  const [laster, setLaster] = useState(true);
+  const [epost, setEpost] = useState("");
+  const [rolle, setRolle] = useState<"eier" | "operator">("operator");
+  const [legger, setLegger] = useState(false);
+  const [feil, setFeil] = useState("");
+  const [fjerner, setFjerner] = useState<string | null>(null);
+
+  const fetchTilganger = useCallback(async () => {
+    setLaster(true);
+    const { data } = await supabase
+      .from("arena_tilganger")
+      .select("id, rolle, bruker_id, brukere(epost, fornavn, etternavn)")
+      .eq("arena_id", arenaId)
+      .order("opprettet");
+    const rader = (data ?? []) as unknown as ArenaTilgangRad[];
+    setTilganger(rader.map(r => ({
+      id: r.id, rolle: r.rolle, bruker_id: r.bruker_id,
+      epost: r.brukere?.epost ?? "—", fornavn: r.brukere?.fornavn ?? null, etternavn: r.brukere?.etternavn ?? null,
+    })));
+    setLaster(false);
+  }, [arenaId]);
+
+  useEffect(() => { fetchTilganger(); }, [fetchTilganger]);
+
+  async function handleLeggTil(e: React.FormEvent) {
+    e.preventDefault();
+    const q = epost.trim().toLowerCase();
+    if (!q) return;
+    setLegger(true);
+    setFeil("");
+    const { data: bruker, error: brukerError } = await supabase
+      .from("brukere")
+      .select("id")
+      .ilike("epost", q)
+      .maybeSingle();
+    if (brukerError || !bruker) {
+      setLegger(false);
+      setFeil(t.notFoundError);
+      return;
+    }
+    const { error } = await supabase.from("arena_tilganger").insert({ bruker_id: bruker.id, arena_id: arenaId, rolle });
+    setLegger(false);
+    if (error) {
+      setFeil(error.code === "23505" ? t.alreadyHasAccessError : error.message);
+      return;
+    }
+    setEpost("");
+    fetchTilganger();
+  }
+
+  async function handleFjern(tilgang: ArenaTilgang) {
+    setFjerner(tilgang.id);
+    const { error } = await supabase.from("arena_tilganger").delete().eq("id", tilgang.id);
+    setFjerner(null);
+    if (error) { setFeil(error.message); return; }
+    setTilganger(prev => prev.filter(x => x.id !== tilgang.id));
+  }
+
+  return (
+    <div>
+      <PanelLabel>{t.title}</PanelLabel>
+      <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", marginBottom: "12px" }}>{t.helpText}</p>
+      <div style={infoCardStyle}>
+        {laster ? (
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>{t.loading}</p>
+        ) : tilganger.length === 0 ? (
+          <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.35)" }}>{t.noAccess}</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+            {tilganger.map(tg => (
+              <div key={tg.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px", fontSize: "13px" }}>
+                <div style={{ overflow: "hidden" }}>
+                  <div style={{ color: "#fff" }}>{[tg.fornavn, tg.etternavn].filter(Boolean).join(" ") || tg.epost}</div>
+                  <div style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px" }}>{tg.epost} · {tg.rolle === "eier" ? t.rolleEier : t.rolleOperator}</div>
+                </div>
+                <button onClick={() => handleFjern(tg)} disabled={fjerner === tg.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F", flexShrink: 0 }}>
+                  {fjerner === tg.id ? "…" : t.removeButton}
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <form
+          onSubmit={handleLeggTil}
+          style={{
+            display: "flex", gap: "8px", flexWrap: "wrap" as const,
+            paddingTop: tilganger.length > 0 ? "16px" : 0,
+            borderTop: tilganger.length > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
+          }}
+        >
+          <input
+            type="email" value={epost} onChange={e => setEpost(e.target.value)}
+            placeholder={t.emailPlaceholder} style={{ ...inputStyle, flex: "1 1 160px" }}
+          />
+          <select value={rolle} onChange={e => setRolle(e.target.value as "eier" | "operator")} style={{ ...inputStyle, flex: "0 1 130px" }}>
+            <option value="operator">{t.rolleOperator}</option>
+            <option value="eier">{t.rolleEier}</option>
+          </select>
+          <button type="submit" disabled={legger} style={{ ...outlineCoralBtnStyle, padding: "10px 16px" }}>
+            {legger ? t.adding : t.addButton}
+          </button>
+        </form>
+        {feil && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "10px" }}>{feil}</p>}
+      </div>
+    </div>
+  );
+}
+
 /* ─── ARENA DETAIL PANEL (slide-in from right) ─── */
 
 function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, onEdit, onPositionChanged, onArenaUpdated, onPilotChanged, dict, locale }: {
@@ -2430,6 +2566,11 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
               </div>
             </div>
           )}
+
+          {/* ── TILGANGER ── */}
+          <div style={{ marginTop: "24px" }}>
+            <ArenaTilgangSeksjon arenaId={arena.id} dict={dict} />
+          </div>
 
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import dynamic from "next/dynamic";
 import QRCode from "qrcode";
 import type { Session } from "@supabase/supabase-js";
@@ -20,11 +20,15 @@ import {
 } from "@/lib/supabase";
 import { ArenaProfilCard } from "@/components/ArenaProfilCard";
 import { InfoTavleCard } from "@/components/InfoTavleCard";
+import { HoldmusikkCard } from "@/components/HoldmusikkCard";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { geokodPoststed, useGeocoder } from "@/lib/geonorge";
 import type { Dictionary, Locale } from "@/i18n/get-dictionary";
 
 type MinSide = Dictionary["minSide"];
+
+type MinArenaTilgang = { arena_id: string; rolle: "eier" | "operator"; arenanavn: string };
+type ArenaTilgangRaw = { arena_id: string; rolle: "eier" | "operator"; arenaer: { arenanavn: string } | null };
 
 // Ådience Demo skal stå helt fri -- samme unntak som HOLDMUSIKK_ARENAER i
 // CastContent.tsx. Selve begrensningen håndheves i DB-triggeren
@@ -253,6 +257,20 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   const [noArena, setNoArena] = useState(false);
   const [visningSomAdmin, setVisningSomAdmin] = useState(false);
 
+  // En person kan ha tilgang til flere arenaer (arena_tilganger), med ulik
+  // rolle per arena -- 'eier' er full tilgang, 'operator' er begrenset til
+  // holdmusikk/infotavle/Media (håndhevet i databasen, se
+  // enforce_operator_column_scope() og RLS-policyene på hver tabell). Denne
+  // fanen speiler kun det -- ingen ny tilgang gis fra klienten.
+  const [mineArenaer, setMineArenaer] = useState<MinArenaTilgang[]>([]);
+  const [valgtArenaId, setValgtArenaId] = useState<string | null>(null);
+  const [minRolle, setMinRolle] = useState<"eier" | "operator">("eier");
+  // Speiler valgtArenaId slik at loadData() kan lese gjeldende valg uten å ha
+  // det i dependency-arrayen -- ellers ville re-kall etter en lagring (uten
+  // eksplisitt arena-id) hoppet tilbake til standardarenaen i stedet for å
+  // bli værende på den man faktisk ser på.
+  const valgtArenaIdRef = useRef<string | null>(null);
+
   // Admin-only override so Ådience staff can open any arena's Min side directly
   // from /admin (see ArenaDetailPanel's "Åpne Min side" link) without needing to
   // log in as that arena's owner. Read directly off window.location — this
@@ -260,11 +278,20 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   // there's no SSR/hydration mismatch to worry about.
   const adminArenaId = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("admin_arena") : null;
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (byttTilArenaId?: string) => {
     setLoading(true);
 
     let arenaId: string | null = null;
     let admin = false;
+
+    const { data: tilgangerData } = await supabase
+      .from("arena_tilganger")
+      .select("arena_id, rolle, arenaer(arenanavn)")
+      .eq("bruker_id", session.user.id);
+    const mine = ((tilgangerData ?? []) as unknown as ArenaTilgangRaw[]).map(r => ({
+      arena_id: r.arena_id, rolle: r.rolle, arenanavn: r.arenaer?.arenanavn ?? "—",
+    }));
+    setMineArenaer(mine);
 
     if (adminArenaId) {
       const { data: bruker } = await supabase
@@ -278,13 +305,12 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
       } else {
         arenaId = bruker?.arena_id ?? null;
       }
+    } else if (byttTilArenaId) {
+      arenaId = byttTilArenaId;
+    } else if (valgtArenaIdRef.current && mine.some(m => m.arena_id === valgtArenaIdRef.current)) {
+      arenaId = valgtArenaIdRef.current;
     } else {
-      const { data: bruker } = await supabase
-        .from("brukere")
-        .select("arena_id")
-        .eq("id", session.user.id)
-        .single();
-      arenaId = bruker?.arena_id ?? null;
+      arenaId = mine.find(m => m.rolle === "eier")?.arena_id ?? mine[0]?.arena_id ?? null;
     }
 
     if (!arenaId) {
@@ -294,6 +320,9 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
     }
 
     setVisningSomAdmin(admin);
+    valgtArenaIdRef.current = arenaId;
+    setValgtArenaId(arenaId);
+    setMinRolle(admin ? "eier" : (mine.find(m => m.arena_id === arenaId)?.rolle ?? "eier"));
 
     const [{ data: arenaData }, { data: abonnementData }, { data: pilotData }, { data: arrangementerData }, { data: speakerteamData }] =
       await Promise.all([
@@ -313,6 +342,19 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   }, [session.user.id, adminArenaId]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Operatør ser kun ArenaInfo (innhold i appen + holdmusikk) og Media --
+  // Oversikt/Speakerteam/Statistikk er eier-only (abonnement, sertifisering,
+  // sendingslogg). Hopper vekk fra en fane operatøren ikke skal se, f.eks.
+  // fra en URL-hash arvet fra en tidligere eier-økt på samme nettleser.
+  const synligeTabIds: Tab[] = visningSomAdmin || minRolle === "eier" ? TAB_IDS : (["arenainfo", "media"] as Tab[]);
+  useEffect(() => {
+    if (loading || synligeTabIds.includes(tab)) return;
+    const fallback = synligeTabIds[0];
+    setTab(fallback);
+    window.history.replaceState(null, "", `#${fallback}`);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, minRolle]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -355,7 +397,22 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
           </a>
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <a href="https://www.adience.no/blog" style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>{t.header.blog}</a>
-            <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{arena?.arenanavn}</span>
+            {!visningSomAdmin && mineArenaer.length > 1 ? (
+              <select
+                value={valgtArenaId ?? ""}
+                onChange={(e) => loadData(e.target.value)}
+                style={{
+                  backgroundColor: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "8px",
+                  padding: "8px 12px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-inter), system-ui, sans-serif", cursor: "pointer",
+                }}
+              >
+                {mineArenaer.map((m) => (
+                  <option key={m.arena_id} value={m.arena_id}>{m.arenanavn}</option>
+                ))}
+              </select>
+            ) : (
+              <span style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{arena?.arenanavn}</span>
+            )}
             <LanguageSwitcher locale={locale} noHref="/min-side" enHref="/en/min-side" />
             {visningSomAdmin ? (
               <a href="/admin" style={{ ...ghostBtnStyle, textDecoration: "none", display: "inline-block" }}>{t.header.backToAdmin}</a>
@@ -384,7 +441,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
         </div>
 
         <nav style={{ display: "flex", gap: "4px", marginBottom: "32px", flexWrap: "wrap" as const, borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          {TAB_IDS.map((id) => {
+          {synligeTabIds.map((id) => {
             const aktiv = tab === id;
             return (
               <button
@@ -417,7 +474,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
           <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
         )}
         {tab === "arenainfo" && arena && (
-          <ArenaInfoTab arena={arena} abonnement={abonnement} onChanged={loadData} dict={dict} />
+          <ArenaInfoTab arena={arena} abonnement={abonnement} minRolle={minRolle} onChanged={loadData} dict={dict} locale={locale} />
         )}
         {tab === "speakerteam" && arena && (
           <SpeakerteamSection arenaId={arena.id} arena={arena} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
@@ -475,22 +532,12 @@ function OversiktSection({
         </p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px", marginTop: "24px" }}>
-        <div style={cardStyle}>
-          <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{dict.cards.arenaProfil.heading}</h3>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "20px" }}>
-            {dict.cards.arenaProfil.subtitle}
-          </p>
-          <ArenaProfilCard arena={arena} onSaved={onChanged} embedded dict={dict} locale={locale} />
-        </div>
-
-        <div style={cardStyle}>
-          <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{dict.cards.infoTavle.heading}</h3>
-          <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "20px" }}>
-            {dict.cards.infoTavle.subtitle}
-          </p>
-          <InfoTavleCard arenaId={arena.id} embedded dict={dict} locale={locale} />
-        </div>
+      <div style={{ ...cardStyle, marginTop: "24px" }}>
+        <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{dict.cards.arenaProfil.heading}</h3>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "20px" }}>
+          {dict.cards.arenaProfil.subtitle}
+        </p>
+        <ArenaProfilCard arena={arena} onSaved={onChanged} embedded dict={dict} locale={locale} />
       </div>
 
       <div style={{ marginTop: "24px" }}>
@@ -608,13 +655,45 @@ function StatistikkSection({ arena, dict, locale }: { arena: Arena; dict: Dictio
 // som så ut som overlappende/duplikate seksjoner. Nå ett skjema, én
 // lagre-knapp, samme feltrekkefølge som registreringen selv, pluss
 // dekningsområdet (kart) rett under.
-function ArenaInfoTab({ arena, abonnement, onChanged, dict }: { arena: Arena; abonnement: Abonnement | null; onChanged: () => void; dict: Dictionary }) {
+function ArenaInfoTab({
+  arena, abonnement, minRolle, onChanged, dict, locale,
+}: { arena: Arena; abonnement: Abonnement | null; minRolle: "eier" | "operator"; onChanged: () => void; dict: Dictionary; locale: Locale }) {
+  const t = dict.minSide.arenaInfo;
   return (
     <div>
-      <ArenaInfoSection arena={arena} onSaved={onChanged} dict={dict} />
-      <div style={{ marginTop: "24px" }}>
-        <GeofenceKartSection arena={arena} abonnement={abonnement} onSaved={onChanged} dict={dict} />
+      <div style={cardStyle}>
+        <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.contentTitle}</h3>
+        <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "13px", marginBottom: "20px" }}>{t.contentSubtitle}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "24px" }}>
+          <div>
+            <h4 style={{ fontFamily: "var(--font-inter), system-ui, sans-serif", fontWeight: 600, fontSize: "14px", color: "#fff", marginBottom: "4px" }}>
+              {dict.cards.infoTavle.heading}
+            </h4>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "16px" }}>{dict.cards.infoTavle.subtitle}</p>
+            <InfoTavleCard arenaId={arena.id} embedded dict={dict} locale={locale} />
+          </div>
+          <div>
+            <h4 style={{ fontFamily: "var(--font-inter), system-ui, sans-serif", fontWeight: 600, fontSize: "14px", color: "#fff", marginBottom: "4px" }}>
+              {dict.cards.holdmusikk.heading}
+            </h4>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", marginBottom: "16px" }}>{dict.cards.holdmusikk.subtitle}</p>
+            <HoldmusikkCard arena={arena} onSaved={onChanged} embedded dict={dict} />
+          </div>
+        </div>
       </div>
+
+      {minRolle === "eier" ? (
+        <>
+          <div style={{ marginTop: "24px" }}>
+            <ArenaInfoSection arena={arena} onSaved={onChanged} dict={dict} />
+          </div>
+          <div style={{ marginTop: "24px" }}>
+            <GeofenceKartSection arena={arena} abonnement={abonnement} onSaved={onChanged} dict={dict} />
+          </div>
+        </>
+      ) : (
+        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "12px", marginTop: "16px" }}>{t.operatorHint}</p>
+      )}
     </div>
   );
 }
@@ -1060,10 +1139,50 @@ function SpeakerteamSection({
   const [sletter, setSletter] = useState<string | null>(null);
   const [moduler, setModuler] = useState<KursModul[]>([]);
 
+  const [tilgangEposter, setTilgangEposter] = useState<Set<string>>(new Set());
+  const [girTilgangId, setGirTilgangId] = useState<string | null>(null);
+  const [tilgangFeil, setTilgangFeil] = useState("");
+
   useEffect(() => {
     supabase.from("kurs_moduler").select("*").order("rekkefolge", { ascending: true })
       .then(({ data }) => setModuler(data ?? []));
   }, []);
+
+  const fetchTilganger = useCallback(async () => {
+    const { data } = await supabase
+      .from("arena_tilganger")
+      .select("brukere(epost)")
+      .eq("arena_id", arenaId);
+    const rader = (data ?? []) as unknown as { brukere: { epost: string } | null }[];
+    setTilgangEposter(new Set(rader.map(r => r.brukere?.epost?.toLowerCase()).filter((e): e is string => !!e)));
+  }, [arenaId]);
+
+  useEffect(() => { fetchTilganger(); }, [fetchTilganger]);
+
+  // Sertifisering (fullført Speakerteam-kurs) er forutsetningen -- eieren
+  // trykker selv "Gi tilgang" for å faktisk aktivere den, se
+  // /api/inviter-operator. Oppretter kontoen (invitasjon) hvis personen ikke
+  // har logget inn før, ellers gis tilgangen direkte.
+  async function handleGiTilgang(s: SpeakerTeam) {
+    setGirTilgangId(s.id);
+    setTilgangFeil("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) {
+      setGirTilgangId(null);
+      setTilgangFeil(t.tilgangMissingSession);
+      return;
+    }
+    const res = await fetch("/api/inviter-operator", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ epost: s.epost, fornavn: s.fornavn, etternavn: s.etternavn, arenaId, locale }),
+    });
+    const data = await res.json();
+    setGirTilgangId(null);
+    if (!res.ok) { setTilgangFeil(data.error ?? t.tilgangGenericError); return; }
+    fetchTilganger();
+  }
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -1111,26 +1230,39 @@ function SpeakerteamSection({
         ) : (
           <table style={tableStyle}>
             <thead><tr style={theadRowStyle}>
-              <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thRolle}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th><th style={thStyle} />
+              <th style={thStyle}>{t.thName}</th><th style={thStyle}>{t.thEmail}</th><th style={thStyle}>{t.thRolle}</th><th style={thStyle}>{t.thProgress}</th><th style={thStyle}>{t.thCertified}</th><th style={thStyle}>{t.thTilgang}</th><th style={thStyle} />
             </tr></thead>
             <tbody>
-              {speakerteam.map((s) => (
-                <tr key={s.id}>
-                  <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
-                  <td style={tdStyle}>{s.epost}</td>
-                  <td style={tdStyle}>{s.rolle ?? "—"}</td>
-                  <td style={tdStyle}>{s.fullforte_moduler.length} / {moduler.length}</td>
-                  <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
-                  <td style={tdStyle}>
-                    <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
-                      {t.deleteButton}
-                    </button>
-                  </td>
-                </tr>
-              ))}
+              {speakerteam.map((s) => {
+                const harTilgang = !!s.epost && tilgangEposter.has(s.epost.toLowerCase());
+                return (
+                  <tr key={s.id}>
+                    <td style={tdStyle}>{s.fornavn} {s.etternavn}</td>
+                    <td style={tdStyle}>{s.epost}</td>
+                    <td style={tdStyle}>{s.rolle ?? "—"}</td>
+                    <td style={tdStyle}>{s.fullforte_moduler.length} / {moduler.length}</td>
+                    <td style={tdStyle}>{s.sertifisert ? <span style={{ color: "#33D3C4" }}>{t.certifiedLabel}</span> : "—"}</td>
+                    <td style={tdStyle}>
+                      {harTilgang ? (
+                        <span style={{ color: "#33D3C4", fontSize: "13px" }}>{t.tilgangGitt}</span>
+                      ) : s.sertifisert && s.epost ? (
+                        <button onClick={() => handleGiTilgang(s)} disabled={girTilgangId === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px" }}>
+                          {girTilgangId === s.id ? t.girTilgang : t.giTilgangButton}
+                        </button>
+                      ) : "—"}
+                    </td>
+                    <td style={tdStyle}>
+                      <button onClick={() => handleDelete(s.id)} disabled={sletter === s.id} style={{ ...ghostBtnStyle, padding: "6px 10px", color: "#D94F4F" }}>
+                        {t.deleteButton}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
+        {tilgangFeil && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{tilgangFeil}</p>}
       </div>
 
       <div style={{ marginTop: "24px" }}>

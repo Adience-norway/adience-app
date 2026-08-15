@@ -122,6 +122,10 @@ const no: {
       stepGeofence: string; stepSpeakerteam: string; stepPilotExpiringPrefix: string; stepPilotExpiringSuffix: string; stepStatsComing: string;
       listenersTitle: string; listenersComing: string;
     };
+    arenaInfo: {
+      contentTitle: string; contentSubtitle: string;
+      detailsTitle: string; operatorHint: string;
+    };
     kontaktinfo: {
       title: string; subtitle: string;
       fieldArenanavn: string;
@@ -159,6 +163,8 @@ const no: {
       fieldFornavn: string; fieldEtternavn: string; fieldEpost: string; fieldRolle: string; saving: string; addButton: string;
       emptyState: string; deleteButton: string; confirmDelete: string;
       thName: string; thEmail: string; thRolle: string; thProgress: string; thCertified: string; certifiedLabel: string;
+      thTilgang: string; giTilgangButton: string; girTilgang: string; tilgangGitt: string;
+      tilgangGenericError: string; tilgangMissingSession: string;
     };
     kurs: {
       emptyState: string; selectSpeaker: string; certifiedPrefix: string; nextModuleButton: string;
@@ -199,6 +205,7 @@ const no: {
     adminManager: Record<string, string>;
     arenaRow: Record<string, string>;
     detailPanel: Record<string, string>;
+    tilgang: Record<string, string>;
     addArenaModal: Record<string, string>;
     logoUploadField: Record<string, string>;
     kursproduksjon: Record<string, string>;
@@ -583,6 +590,12 @@ const no: {
       listenersTitle: "Lyttertall og engasjement",
       listenersComing: "Sanntids lyttertall og AI-basert toppengasjement-innsikt kommer her når streaming-integrasjonen er koblet på.",
     },
+    arenaInfo: {
+      contentTitle: "Innhold i appen",
+      contentSubtitle: "Det publikum ser i appen på arenaen — infotavle-innhold og holdmusikken som spilles før sendingen starter.",
+      detailsTitle: "Arenadetaljer",
+      operatorHint: "Adresse, dekningsområde og organisasjonsdetaljer kan kun endres av arenaeier.",
+    },
     kontaktinfo: {
       title: "Arenainformasjon",
       subtitle: "Samme opplysninger som ble registrert da dere meldte dere på — rett opp her om noe er feil eller endret seg.",
@@ -672,6 +685,12 @@ const no: {
       thProgress: "Kursprogresjon",
       thCertified: "Sertifisert",
       certifiedLabel: "✓ Sertifisert",
+      thTilgang: "Tilgang",
+      giTilgangButton: "Gi tilgang",
+      girTilgang: "Gir tilgang…",
+      tilgangGitt: "✓ Har tilgang",
+      tilgangGenericError: "Noe gikk galt.",
+      tilgangMissingSession: "Fant ikke din egen innlogging. Prøv å laste siden på nytt.",
     },
     kurs: {
       emptyState: "Legg til det første teammedlemmet over for å låse opp kursmodulene.",
@@ -914,6 +933,20 @@ const no: {
       deleteLogoNote: "Logo-filen slettes også fra lagringen.",
       deleteConfirm: "Ja, slett arena",
       deleting: "Sletter…",
+    },
+    tilgang: {
+      title: "Tilganger",
+      helpText: "Personer med tilgang til denne arenaen. Eier har full tilgang. Operatør er begrenset til holdmusikk, infotavle og Media — ikke abonnement, adresse eller geofence.",
+      loading: "Laster…",
+      noAccess: "Ingen har fått egen tilgang ennå — arenaens registrerte eier har alltid full tilgang.",
+      rolleEier: "Eier",
+      rolleOperator: "Operatør",
+      emailPlaceholder: "E-post til eksisterende konto…",
+      addButton: "Gi tilgang",
+      adding: "Legger til…",
+      removeButton: "Fjern",
+      notFoundError: "Fant ingen konto med den e-posten. Personen må ha logget inn minst én gang først.",
+      alreadyHasAccessError: "Denne personen har allerede tilgang til arenaen.",
     },
     addArenaModal: {
       editTitlePrefix: "Rediger —",
