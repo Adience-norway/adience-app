@@ -26,6 +26,15 @@ const KATEGORIER = [
 ];
 const LAND = ["Norge", "Sverige", "Danmark", "Finland", "Spania", "Tyskland", "UK", "Annet"];
 
+// Ådience Demo skal dekke hele kloden -- ingen geofence-grense -- fordi Apple
+// (og andre) må kunne teste appen fra hvor som helst i verden, ikke bare fra
+// Norge. Denne arenaen mistet nettopp den innstillingen fordi radius-sliderens
+// vanlige 50-1000m-grense gjorde det altfor lett å dra den ned ved et uhell.
+// GLOBAL_RADIUS overskrider maksimal mulig avstand mellom to punkter på jorden
+// (~20 015 km), så den fungerer i praksis som "ingen grense".
+const ADIENCE_DEMO_ARENA_ID = "ec864642-2153-4f96-8648-5192b8fb29d3";
+const GLOBAL_RADIUS = 25_000_000;
+
 function haversineDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6_371_000;
   const toRad = (d: number) => d * Math.PI / 180;
@@ -1900,6 +1909,23 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
 
   const hasPendingRadius = localRadius !== savedRadius;
 
+  // Ådience Demo skal ha ingen geofence-grense -- se GLOBAL_RADIUS-kommentaren
+  // øverst i filen. Skjuler den vanlige radius-sliderens 50-1000m-grense for
+  // akkurat denne arenaen, med en eksplisitt lås som må fjernes bevisst før
+  // radiusen kan endres -- det som manglet forrige gang og gjorde at den ble
+  // dratt ned til 100m ved et uhell.
+  const erAdienceDemo = arena.id === ADIENCE_DEMO_ARENA_ID;
+  const [demoLast, setDemoLast] = useState(erAdienceDemo && (arena.geofence_radius ?? 0) > 100_000);
+  async function gjenopprettGlobalGeofence() {
+    setRadiusSaving(true);
+    setRadiusError(null);
+    const { error } = await supabase.from("arenaer").update({ geofence_radius: GLOBAL_RADIUS }).eq("id", arena.id);
+    setRadiusSaving(false);
+    if (error) { setRadiusError(error.message); return; }
+    setSavedRadius(GLOBAL_RADIUS); setLocalRadius(GLOBAL_RADIUS); setDemoLast(true);
+    onArenaUpdated(arena.id, { geofence_radius: GLOBAL_RADIUS });
+  }
+
   // Polygon-geofence: premium-funksjon (årsabonnement), kun admin tegner den
   // inn i dag -- se GeofenceMap.tsx, som fantes ferdigbygd men aldri var
   // koblet inn noe sted før 2026-07-25. Min side viser polygonen (les kun)
@@ -2224,54 +2250,83 @@ function ArenaDetailPanel({ arena, onClose, onToggle, onLogoChanged, onDeleted, 
 
                 {/* Radius editor */}
                 <div style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px", padding: "14px 16px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-                    <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>{t.radiusLabel}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  {erAdienceDemo && demoLast ? (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>{t.radiusLabel}</span>
+                        <span style={{ fontSize: "13px", color: "#33D3C4", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>🌍 {t.globalGeofenceValue}</span>
+                      </div>
+                      <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "10px" }}>
+                        {t.globalGeofenceHint}
+                      </p>
+                      <button
+                        onClick={() => setDemoLast(false)}
+                        style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", color: "rgba(255,255,255,0.5)", fontSize: "12px", padding: "8px 12px", cursor: "pointer", fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+                      >
+                        {t.globalGeofenceUnlock}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      {erAdienceDemo && (
+                        <button
+                          onClick={gjenopprettGlobalGeofence}
+                          disabled={radiusSaving}
+                          style={{ background: "none", border: "1px solid rgba(51,211,196,0.3)", borderRadius: "8px", color: "#33D3C4", fontSize: "12px", padding: "6px 10px", cursor: "pointer", fontFamily: "var(--font-inter), system-ui, sans-serif", marginBottom: "12px" }}
+                        >
+                          🌍 {t.globalGeofenceRestore}
+                        </button>
+                      )}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+                        <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.45)" }}>{t.radiusLabel}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <input
+                            type="number" min={50} max={1000} step={10}
+                            value={localRadius}
+                            onChange={e => { setLocalRadius(Math.min(1000, Math.max(50, Number(e.target.value)))); setRadiusError(null); setOverlapWarnings([]); }}
+                            style={{ width: "72px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "4px 8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
+                          />
+                          <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>
+                        </div>
+                      </div>
                       <input
-                        type="number" min={50} max={1000} step={10}
+                        type="range" min={50} max={1000} step={10}
                         value={localRadius}
-                        onChange={e => { setLocalRadius(Math.min(1000, Math.max(50, Number(e.target.value)))); setRadiusError(null); setOverlapWarnings([]); }}
-                        style={{ width: "72px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "4px 8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
+                        onChange={e => { setLocalRadius(Number(e.target.value)); setRadiusError(null); setOverlapWarnings([]); }}
+                        style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer", marginBottom: "12px" }}
                       />
-                      <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>
-                    </div>
-                  </div>
-                  <input
-                    type="range" min={50} max={1000} step={10}
-                    value={localRadius}
-                    onChange={e => { setLocalRadius(Number(e.target.value)); setRadiusError(null); setOverlapWarnings([]); }}
-                    style={{ width: "100%", accentColor: "#33D3C4", cursor: "pointer", marginBottom: "12px" }}
-                  />
-                  <div style={{ display: "flex", gap: "0", justifyContent: "space-between", fontSize: "10px", color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-ibm-plex-mono), monospace", marginTop: "-6px", marginBottom: "12px" }}>
-                    <span>50m</span><span>500m</span><span>1000m</span><span>1500m</span><span>2000m</span>
-                  </div>
+                      <div style={{ display: "flex", gap: "0", justifyContent: "space-between", fontSize: "10px", color: "rgba(255,255,255,0.2)", fontFamily: "var(--font-ibm-plex-mono), monospace", marginTop: "-6px", marginBottom: "12px" }}>
+                        <span>50m</span><span>250m</span><span>500m</span><span>750m</span><span>1000m</span>
+                      </div>
 
-                  {overlapWarnings.length > 0 && (
-                    <div style={{ backgroundColor: "rgba(255,107,74,0.08)", border: "1px solid rgba(255,107,74,0.22)", borderRadius: "7px", padding: "9px 12px", marginBottom: "10px" }}>
-                      {overlapWarnings.map((w, i) => (
-                        <p key={i} style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", margin: i === 0 ? 0 : "4px 0 0", lineHeight: 1.4 }}>
-                          {t.overlapWarningPrefix} {w}. {t.overlapWarningSuffix}
-                        </p>
-                      ))}
-                    </div>
-                  )}
+                      {overlapWarnings.length > 0 && (
+                        <div style={{ backgroundColor: "rgba(255,107,74,0.08)", border: "1px solid rgba(255,107,74,0.22)", borderRadius: "7px", padding: "9px 12px", marginBottom: "10px" }}>
+                          {overlapWarnings.map((w, i) => (
+                            <p key={i} style={{ fontSize: "12px", color: "rgba(255,255,255,0.65)", margin: i === 0 ? 0 : "4px 0 0", lineHeight: 1.4 }}>
+                              {t.overlapWarningPrefix} {w}. {t.overlapWarningSuffix}
+                            </p>
+                          ))}
+                        </div>
+                      )}
 
-                  {radiusError && (
-                    <p style={{ fontSize: "12px", color: "#D94F4F", marginBottom: "10px" }}>✗ {radiusError}</p>
-                  )}
+                      {radiusError && (
+                        <p style={{ fontSize: "12px", color: "#D94F4F", marginBottom: "10px" }}>✗ {radiusError}</p>
+                      )}
 
-                  {radiusJustSaved && !hasPendingRadius && (
-                    <p style={{ fontSize: "12px", color: "#33D3C4", marginBottom: "10px" }}>{t.radiusSaved}</p>
-                  )}
+                      {radiusJustSaved && !hasPendingRadius && (
+                        <p style={{ fontSize: "12px", color: "#33D3C4", marginBottom: "10px" }}>{t.radiusSaved}</p>
+                      )}
 
-                  {hasPendingRadius && (
-                    <button
-                      onClick={handleSaveRadius}
-                      disabled={radiusSaving}
-                      style={{ ...tealBtnStyle, width: "100%", padding: "9px", fontSize: "13px", opacity: radiusSaving ? 0.6 : 1 }}
-                    >
-                      {radiusSaving ? t.saving : t.saveGeofence}
-                    </button>
+                      {hasPendingRadius && (
+                        <button
+                          onClick={handleSaveRadius}
+                          disabled={radiusSaving}
+                          style={{ ...tealBtnStyle, width: "100%", padding: "9px", fontSize: "13px", opacity: radiusSaving ? 0.6 : 1 }}
+                        >
+                          {radiusSaving ? t.saving : t.saveGeofence}
+                        </button>
+                      )}
+                    </>
                   )}
                 </div>
               </>
@@ -2795,6 +2850,9 @@ function AddArenaModal({ onClose, onSaved, arena: editingArena, dict }: {
     epost:        editingArena?.epost        ?? "",
     geofence_radius: editingArena?.geofence_radius ?? 250,
   });
+  // Samme lås som i ArenaDetailPanel -- se ADIENCE_DEMO_ARENA_ID-kommentaren.
+  const erAdienceDemo = editingArena?.id === ADIENCE_DEMO_ARENA_ID;
+  const [demoLast, setDemoLast] = useState(erAdienceDemo && (editingArena?.geofence_radius ?? 0) > 100_000);
   const [manualLat, setManualLat] = useState(editingArena?.lat?.toFixed(6) ?? "");
   const [manualLng, setManualLng] = useState(editingArena?.lng?.toFixed(6) ?? "");
   const [showManual, setShowManual] = useState(isEdit && editingArena?.lat != null);
@@ -3190,23 +3248,52 @@ function AddArenaModal({ onClose, onSaved, arena: editingArena, dict }: {
 
           {/* Geofence radius */}
           <ModalField label={t.fieldGeofenceRadius}>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <input
-                type="range" min={50} max={1000} step={10}
-                value={form.geofence_radius}
-                onChange={e => setForm(prev => ({ ...prev, geofence_radius: Number(e.target.value) }))}
-                style={{ flex: 1, accentColor: "#33D3C4", cursor: "pointer" }}
-              />
-              <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
-                <input
-                  type="number" min={50} max={1000} step={10}
-                  value={form.geofence_radius}
-                  onChange={e => setForm(prev => ({ ...prev, geofence_radius: Math.min(1000, Math.max(50, Number(e.target.value))) }))}
-                  style={{ width: "64px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
-                />
-                <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>
+            {erAdienceDemo && demoLast ? (
+              <div style={{ backgroundColor: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: "10px", padding: "14px 16px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
+                  <span style={{ fontSize: "13px", color: "#33D3C4", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>🌍 {t.globalGeofenceValue}</span>
+                </div>
+                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", lineHeight: 1.5, marginBottom: "10px" }}>
+                  {t.globalGeofenceHint}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setDemoLast(false)}
+                  style={{ background: "none", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "8px", color: "rgba(255,255,255,0.5)", fontSize: "12px", padding: "8px 12px", cursor: "pointer", fontFamily: "var(--font-inter), system-ui, sans-serif" }}
+                >
+                  {t.globalGeofenceUnlock}
+                </button>
               </div>
-            </div>
+            ) : (
+              <>
+                {erAdienceDemo && (
+                  <button
+                    type="button"
+                    onClick={() => { setForm(prev => ({ ...prev, geofence_radius: GLOBAL_RADIUS })); setDemoLast(true); }}
+                    style={{ background: "none", border: "1px solid rgba(51,211,196,0.3)", borderRadius: "8px", color: "#33D3C4", fontSize: "12px", padding: "6px 10px", cursor: "pointer", fontFamily: "var(--font-inter), system-ui, sans-serif", marginBottom: "10px" }}
+                  >
+                    🌍 {t.globalGeofenceRestore}
+                  </button>
+                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <input
+                    type="range" min={50} max={1000} step={10}
+                    value={form.geofence_radius}
+                    onChange={e => setForm(prev => ({ ...prev, geofence_radius: Number(e.target.value) }))}
+                    style={{ flex: 1, accentColor: "#33D3C4", cursor: "pointer" }}
+                  />
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                    <input
+                      type="number" min={50} max={1000} step={10}
+                      value={form.geofence_radius}
+                      onChange={e => setForm(prev => ({ ...prev, geofence_radius: Math.min(1000, Math.max(50, Number(e.target.value))) }))}
+                      style={{ width: "64px", backgroundColor: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "6px", padding: "8px", color: "#fff", fontSize: "13px", fontFamily: "var(--font-ibm-plex-mono), monospace", outline: "none", textAlign: "right" }}
+                    />
+                    <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace" }}>m</span>
+                  </div>
+                </div>
+              </>
+            )}
           </ModalField>
 
           {modalOverlapWarnings.length > 0 && (
