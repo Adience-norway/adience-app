@@ -6,6 +6,17 @@ import { emailShell, sendBrevoEmail } from "@/lib/nyhetsbrev-email";
 // Kalles av oss (ikke en offentlig, brukerutløst rute) etter at et blogginnlegg er
 // publisert på Wix. Bruker service_role fordi den må lese HELE abonnentlisten —
 // noe anon-nøkkelen bevisst ikke får lov til (se RLS på nyhetsbrev_abonnenter).
+// Beskyttet med samme CRON_SECRET-mønster som /api/cron/* -- ingen browser-sesjon
+// finnes på tidspunktet dette kalles, så et delt hemmelig (ikke bruker-JWT) passer.
+
+function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
 
 function buildArtikkelHtml(tittel: string, ingress: string, url: string, unsubscribeToken: string): string {
   const innerHtml = `
@@ -13,15 +24,15 @@ function buildArtikkelHtml(tittel: string, ingress: string, url: string, unsubsc
       Ny artikkel
     </p>
     <p style="font-size:22px;font-weight:700;color:#ffffff;margin:0 0 12px 0;line-height:1.3;">
-      ${tittel}
+      ${escapeHtml(tittel)}
     </p>
     <p style="font-size:16px;color:rgba(255,255,255,0.6);margin:0 0 24px 0;line-height:1.6;">
-      ${ingress}
+      ${escapeHtml(ingress)}
     </p>
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:8px;">
       <tr>
         <td align="center">
-          <a href="${url}" style="display:inline-block;background-color:#FF6B4A;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.04em;">
+          <a href="${escapeHtml(url)}" style="display:inline-block;background-color:#FF6B4A;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:700;letter-spacing:0.04em;">
             Les artikkelen
           </a>
         </td>
@@ -31,6 +42,12 @@ function buildArtikkelHtml(tittel: string, ingress: string, url: string, unsubsc
 }
 
 export async function POST(req: NextRequest) {
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.get("authorization");
+  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   const brevoKey = process.env.BREVO_API_KEY;
@@ -47,6 +64,9 @@ export async function POST(req: NextRequest) {
 
   if (!tittel || !ingress || !url) {
     return NextResponse.json({ error: "tittel, ingress og url er påkrevd." }, { status: 400 });
+  }
+  if (!/^https:\/\/(www\.)?adience\.no\//.test(url)) {
+    return NextResponse.json({ error: "url må peke til adience.no." }, { status: 400 });
   }
 
   const supabase = createClient(supabaseUrl, serviceRoleKey);

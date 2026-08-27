@@ -1,22 +1,31 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 
 const SPORT_KATEGORIER = ["Outdoor Sports Venue", "Indoor Sports Venue"];
 
 type Locale = "no" | "en";
 
-const ERRORS: Record<Locale, { missingKey: string; missingName: string; noText: string; unknown: string }> = {
+const ERRORS: Record<Locale, { missingKey: string; missingName: string; noText: string; unknown: string; missingToken: string; invalidSession: string; noAccess: string; missingArenaId: string }> = {
   no: {
     missingKey: "Mangler ANTHROPIC_API_KEY på serveren.",
     missingName: "arenanavn er påkrevd.",
     noText: "Fikk ikke generert tekst.",
     unknown: "Ukjent feil",
+    missingToken: "Mangler innloggingstoken.",
+    invalidSession: "Ugyldig eller utløpt innlogging.",
+    noAccess: "Du har ikke tilgang til denne arenaen.",
+    missingArenaId: "arenaId er påkrevd.",
   },
   en: {
     missingKey: "Missing ANTHROPIC_API_KEY on the server.",
     missingName: "arenanavn is required.",
     noText: "Didn't get any generated text.",
     unknown: "Unknown error",
+    missingToken: "Missing login token.",
+    invalidSession: "Invalid or expired login.",
+    noAccess: "You don't have access to this venue.",
+    missingArenaId: "arenaId is required.",
   },
 };
 
@@ -71,18 +80,59 @@ Ikke bruk anførselstegn rundt hele teksten. Skriv kun selve teksten, ingen over
 }
 
 export async function POST(req: NextRequest) {
-  const body = (await req.json()) as { arenanavn?: string; kategori?: string | null; by?: string | null; stikkord?: string | null; locale?: string };
+  const body = (await req.json()) as { arenaId?: string; arenanavn?: string; kategori?: string | null; by?: string | null; stikkord?: string | null; locale?: string };
   const locale: Locale = body.locale === "en" ? "en" : "no";
   const err = ERRORS[locale];
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    return NextResponse.json({ error: err.unknown }, { status: 500 });
+  }
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: err.missingKey }, { status: 500 });
   }
 
-  const { arenanavn, kategori = null, by = null, stikkord = null } = body;
+  const { arenaId, arenanavn, kategori = null, by = null, stikkord = null } = body;
 
   if (!arenanavn) {
     return NextResponse.json({ error: err.missingName }, { status: 400 });
+  }
+  if (!arenaId) {
+    return NextResponse.json({ error: err.missingArenaId }, { status: 400 });
+  }
+
+  // Denne genererer tekst via en betalt API (koster penger per kall), og brukes
+  // både fra /min-side (eier) og /admin (Ådience-ansatt) via ArenaProfilCard --
+  // krev derfor at innringeren enten eier arenaId eller er admin.
+  const authHeader = req.headers.get("authorization");
+  const callerToken = authHeader?.replace("Bearer ", "");
+  if (!callerToken) {
+    return NextResponse.json({ error: err.missingToken }, { status: 401 });
+  }
+  const callerClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${callerToken}` } },
+  });
+  const { data: callerUser, error: callerError } = await callerClient.auth.getUser();
+  if (callerError || !callerUser?.user) {
+    return NextResponse.json({ error: err.invalidSession }, { status: 401 });
+  }
+  const { data: callerBruker } = await callerClient
+    .from("brukere")
+    .select("er_adience_admin")
+    .eq("id", callerUser.user.id)
+    .single();
+  if (!callerBruker?.er_adience_admin) {
+    const { data: eierTilgang } = await callerClient
+      .from("arena_tilganger")
+      .select("id")
+      .eq("bruker_id", callerUser.user.id)
+      .eq("arena_id", arenaId)
+      .eq("rolle", "eier")
+      .maybeSingle();
+    if (!eierTilgang) {
+      return NextResponse.json({ error: err.noAccess }, { status: 403 });
+    }
   }
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });

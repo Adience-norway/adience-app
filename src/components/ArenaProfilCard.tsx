@@ -71,10 +71,12 @@ export function ArenaProfilCard({ arena, onSaved, embedded, dict, locale }: { ar
     setGenererer(true);
     setGenFeil("");
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
       const res = await fetch("/api/generate-description", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ arenanavn: arena.arenanavn, kategori: arena.kategori, by: arena.by, stikkord, locale }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ arenaId: arena.id, arenanavn: arena.arenanavn, kategori: arena.kategori, by: arena.by, stikkord, locale }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? t.errorGeneric);

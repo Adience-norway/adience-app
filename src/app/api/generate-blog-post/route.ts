@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
@@ -104,11 +105,39 @@ async function createWixDraftPost(
 }
 
 export async function POST(req: NextRequest) {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!supabaseUrl || !anonKey) {
+    return NextResponse.json({ error: "Supabase er ikke fullstendig konfigurert på serveren." }, { status: 500 });
+  }
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json({ error: "Mangler ANTHROPIC_API_KEY på serveren." }, { status: 500 });
   }
   if (!process.env.WIX_API_KEY || !process.env.WIX_SITE_ID || !process.env.WIX_ACCOUNT_ID) {
     return NextResponse.json({ error: "Mangler Wix-tilkobling på serveren." }, { status: 500 });
+  }
+
+  // Kalles kun av oss internt (ikke fra noe UI i dag), men koster penger per kall
+  // (Anthropic + Wix-kladd) -- krev admin-JWT, samme mønster som /api/generate-kurs-bilde.
+  const authHeader = req.headers.get("authorization");
+  const callerToken = authHeader?.replace("Bearer ", "");
+  if (!callerToken) {
+    return NextResponse.json({ error: "Mangler innloggingstoken." }, { status: 401 });
+  }
+  const callerClient = createClient(supabaseUrl, anonKey, {
+    global: { headers: { Authorization: `Bearer ${callerToken}` } },
+  });
+  const { data: callerUser, error: callerError } = await callerClient.auth.getUser();
+  if (callerError || !callerUser?.user) {
+    return NextResponse.json({ error: "Ugyldig eller utløpt innlogging." }, { status: 401 });
+  }
+  const { data: callerBruker } = await callerClient
+    .from("brukere")
+    .select("er_adience_admin")
+    .eq("id", callerUser.user.id)
+    .single();
+  if (!callerBruker?.er_adience_admin) {
+    return NextResponse.json({ error: "Du har ikke admin-tilgang til å gjøre dette." }, { status: 403 });
   }
 
   const body = (await req.json()) as {

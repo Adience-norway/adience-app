@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 const BREVO_URL = "https://api.brevo.com/v3/smtp/email";
 
@@ -151,6 +152,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "BREVO_API_KEY not configured" }, { status: 500 });
   }
 
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!supabaseUrl || !serviceRoleKey) {
+    return NextResponse.json({ error: "Supabase er ikke konfigurert på serveren." }, { status: 500 });
+  }
+
   const { epost, fornavn, streamId, locale: rawLocale } = await req.json() as {
     epost: string;
     fornavn: string;
@@ -161,6 +168,22 @@ export async function POST(req: NextRequest) {
 
   if (!epost || !streamId) {
     return NextResponse.json({ error: "Missing epost or streamId" }, { status: 400 });
+  }
+
+  // Kalles rett etter registrering, FØR e-postbekreftelse -- det finnes ingen
+  // innlogget sesjon på dette tidspunktet, så vi kan ikke kreve en bruker-JWT.
+  // I stedet: bekreft at epost+streamId faktisk tilhører en nyopprettet arena,
+  // via service_role. Uten dette var ruten et åpent e-post-relé (fritt "epost"
+  // og "fornavn" til en vilkårlig mottaker).
+  const adminClient = createClient(supabaseUrl, serviceRoleKey);
+  const { data: matchendeArena } = await adminClient
+    .from("arenaer")
+    .select("id")
+    .eq("stream_id", streamId)
+    .ilike("epost", epost.trim())
+    .maybeSingle();
+  if (!matchendeArena) {
+    return NextResponse.json({ error: "Fant ingen arena som matcher epost og streamId." }, { status: 403 });
   }
 
   const payload = {
