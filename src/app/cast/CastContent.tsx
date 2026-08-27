@@ -123,7 +123,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
       const res = await fetch("/api/cast-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ streamId: streamId.trim(), passord: passord.trim() }),
+        body: JSON.stringify({ streamId: streamId.trim(), passord: passord.trim(), locale }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -132,7 +132,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
       } else {
         setPassordVerifisert(false);
         setArenaNavn("");
-        setPassordFeil(t.passordFeil);
+        setPassordFeil(data.error ?? t.passordFeil);
       }
     } catch {
       setPassordVerifisert(false);

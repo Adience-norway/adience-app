@@ -69,12 +69,19 @@ export async function POST(req: NextRequest) {
             periode_slutt: new Date().toISOString(),
           });
         }
+
+        // Dette er der betaling faktisk kobles til tjenesten: streaming_aktiv
+        // er det eneste stedet i appen (/api/cast-auth) som håndhever om
+        // arenaen kan sende. Uten denne linjen ville betaling bare vært en
+        // rad i en tabell, uten noen reell effekt for kunden.
+        await supabase.from("arenaer").update({ streaming_aktiv: true }).eq("id", arenaId);
         break;
       }
 
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
-        const nyStatus = sub.status === "active" || sub.status === "trialing" ? "aktiv" : "avsluttet";
+        const aktiv = sub.status === "active" || sub.status === "trialing";
+        const nyStatus = aktiv ? "aktiv" : "avsluttet";
         const item = sub.items.data[0];
         await supabase
           .from("abonnementer")
@@ -84,6 +91,11 @@ export async function POST(req: NextRequest) {
             periode_slutt: item ? new Date(item.current_period_end * 1000).toISOString() : undefined,
           })
           .eq("stripe_subscription_id", sub.id);
+
+        const arenaId = sub.metadata?.arena_id;
+        if (arenaId) {
+          await supabase.from("arenaer").update({ streaming_aktiv: aktiv }).eq("id", arenaId);
+        }
         break;
       }
 
@@ -93,6 +105,11 @@ export async function POST(req: NextRequest) {
           .from("abonnementer")
           .update({ status: "avsluttet" })
           .eq("stripe_subscription_id", sub.id);
+
+        const arenaId = sub.metadata?.arena_id;
+        if (arenaId) {
+          await supabase.from("arenaer").update({ streaming_aktiv: false }).eq("id", arenaId);
+        }
         break;
       }
 
