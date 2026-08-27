@@ -195,6 +195,10 @@ const no: {
       title: string; typeLabel: string; statusLabel: string; pilotDaysLabel: string; totalPriceLabel: string;
       upgradeButton: string;
       modalTitle: string; modalText: string; close: string;
+      planMonthTitle: string; planMonthPrice: string;
+      planYearTitle: string; planYearPrice: string;
+      planEventTitle: string; planEventPrice: string;
+      checkoutButton: string; checkingOut: string; checkoutError: string;
     };
   };
   admin: {
@@ -747,9 +751,18 @@ const no: {
       pilotDaysLabel: "Pilotdager igjen",
       totalPriceLabel: "Totalpris",
       upgradeButton: "Oppgrader abonnement",
-      modalTitle: "Oppgrader abonnement",
-      modalText: "Betalingsløsning kommer snart. Ta kontakt med oss på post@adience.no eller +47 90182288 for å oppgradere manuelt i mellomtiden.",
+      modalTitle: "Velg abonnement",
+      modalText: "Velg det som passer dere — betaling skjer trygt via Stripe.",
       close: "Lukk",
+      planMonthTitle: "Månedlig abonnement",
+      planMonthPrice: "1950 kr/mnd",
+      planYearTitle: "Årsabonnement",
+      planYearPrice: "17 400 kr/år (tilsvarer 1450 kr/mnd)",
+      planEventTitle: "Enkeltarrangement",
+      planEventPrice: "950 kr",
+      checkoutButton: "Gå til betaling",
+      checkingOut: "Åpner betaling…",
+      checkoutError: "Kunne ikke starte betaling. Prøv igjen, eller ta kontakt på post@adience.no.",
     },
   },
   admin: {

@@ -541,7 +541,7 @@ function OversiktSection({
       </div>
 
       <div style={{ marginTop: "24px" }}>
-        <AbonnementSection abonnement={abonnement} pilot={pilot} dict={dict} />
+        <AbonnementSection arenaId={arena.id} abonnement={abonnement} pilot={pilot} dict={dict} locale={locale} />
       </div>
     </div>
   );
@@ -1857,10 +1857,34 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
 
 /* ─── 8. ABONNEMENT ─── */
 
-function AbonnementSection({ abonnement, pilot, dict }: { abonnement: Abonnement | null; pilot: PilotPeriode | null; dict: Dictionary }) {
+function AbonnementSection({
+  arenaId, abonnement, pilot, dict, locale,
+}: { arenaId: string; abonnement: Abonnement | null; pilot: PilotPeriode | null; dict: Dictionary; locale: Locale }) {
   const t = dict.minSide.abonnement;
   const [showUpgrade, setShowUpgrade] = useState(false);
+  const [checkoutPlan, setCheckoutPlan] = useState<"month" | "year" | "event" | null>(null);
+  const [checkoutError, setCheckoutError] = useState("");
   const dagerIgjen = pilot ? Math.max(0, Math.ceil((new Date(pilot.slutt_dato).getTime() - Date.now()) / 86_400_000)) : null;
+
+  async function handleCheckout(plan: "month" | "year" | "event") {
+    setCheckoutPlan(plan);
+    setCheckoutError("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) { setCheckoutPlan(null); setCheckoutError(t.checkoutError); return; }
+    const res = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ arenaId, plan, locale }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url) {
+      setCheckoutPlan(null);
+      setCheckoutError(data.error ?? t.checkoutError);
+      return;
+    }
+    window.location.href = data.url;
+  }
 
   return (
     <div>
@@ -1882,9 +1906,34 @@ function AbonnementSection({ abonnement, pilot, dict }: { abonnement: Abonnement
         <div style={modalOverlayStyle} onClick={() => setShowUpgrade(false)}>
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ ...sectionHeadingStyle, marginBottom: "12px" }}>{t.modalTitle}</h3>
-            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", lineHeight: 1.6 }}>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", lineHeight: 1.6, marginBottom: "20px" }}>
               {t.modalText}
             </p>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              {([
+                { plan: "month" as const, title: t.planMonthTitle, price: t.planMonthPrice },
+                { plan: "year" as const, title: t.planYearTitle, price: t.planYearPrice },
+                { plan: "event" as const, title: t.planEventTitle, price: t.planEventPrice },
+              ]).map(({ plan, title, price }) => (
+                <div key={plan} style={{ ...cardStyle, padding: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: "14px", color: "#fff" }}>{title}</div>
+                    <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{price}</div>
+                  </div>
+                  <button
+                    onClick={() => handleCheckout(plan)}
+                    disabled={checkoutPlan !== null}
+                    style={{ ...tealBtnStyle, flexShrink: 0, opacity: checkoutPlan !== null ? 0.6 : 1 }}
+                  >
+                    {checkoutPlan === plan ? t.checkingOut : t.checkoutButton}
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {checkoutError && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "16px" }}>{checkoutError}</p>}
+
             <button onClick={() => setShowUpgrade(false)} style={{ ...ghostBtnStyle, marginTop: "20px" }}>{t.close}</button>
           </div>
         </div>
