@@ -1987,9 +1987,45 @@ function AbonnementSection({
           {abonnement?.total_pris != null && <InfoRow label={t.totalPriceLabel} value={`${abonnement.total_pris} kr`} />}
         </div>
 
-        <button onClick={() => setShowUpgrade(true)} style={{ ...coralBtnStyleAuto, marginTop: "24px" }}>
-          {kvalifisererForProve ? t.startTrialButton : t.upgradeButton}
-        </button>
+        {/* Fremhevede snarveier -- reelt "to klikk"-kjøp: kortet ligger allerede
+            lagret hos Stripe for en returnerende kunde, så disse hopper rett
+            til Stripe Checkout uten å måtte åpne den generelle modalen under. */}
+        {abonnement?.type === "engangsarrangement" && (
+          <button
+            onClick={() => handleCheckout("event")}
+            disabled={checkoutPlan !== null}
+            style={{ ...tealBtnStyle, marginTop: "24px", width: "100%", fontSize: "15px", padding: "14px", opacity: checkoutPlan !== null ? 0.6 : 1 }}
+          >
+            {checkoutPlan === "event" ? t.checkingOut : `🎪 ${t.buyAnotherDayButton}`}
+          </button>
+        )}
+        {abonnement?.type === "manedlig" && abonnement.status === "aktiv" && (
+          <button
+            onClick={() => handleCheckout("year")}
+            disabled={checkoutPlan !== null}
+            style={{ ...coralBtnStyleAuto, marginTop: "24px", width: "100%", fontSize: "15px", padding: "14px", opacity: checkoutPlan !== null ? 0.6 : 1 }}
+          >
+            {checkoutPlan === "year" ? t.checkingOut : `⭐ ${t.upgradeToYearButton}`}
+          </button>
+        )}
+        {checkoutError && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{checkoutError}</p>}
+
+        {(() => {
+          // En av snarveiene over er allerede den fremhevede handlingen --
+          // da blir "se alle planer" en sekundær lenke i stedet for å
+          // konkurrere visuelt med den. Uten en snarvei (f.eks. første gangs
+          // prøveperiode, eller allerede på årsabonnement) er dette fortsatt
+          // hovedknappen.
+          const harSnarvei = abonnement?.type === "engangsarrangement" || (abonnement?.type === "manedlig" && abonnement.status === "aktiv");
+          return (
+            <button
+              onClick={() => setShowUpgrade(true)}
+              style={harSnarvei ? { ...ghostBtnStyle, marginTop: "12px" } : { ...coralBtnStyleAuto, marginTop: "24px" }}
+            >
+              {kvalifisererForProve ? t.startTrialButton : t.upgradeButton}
+            </button>
+          );
+        })()}
       </div>
 
       {showUpgrade && (

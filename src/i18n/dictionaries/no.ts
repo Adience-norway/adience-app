@@ -205,6 +205,7 @@ const no: {
       checkoutButton: string; checkingOut: string; checkoutError: string;
       startTrialButton: string; modalTextTrial: string; trialNote: string;
       subscriptionCapNote: string; eventTonoNote: string;
+      buyAnotherDayButton: string; upgradeToYearButton: string;
     };
   };
   admin: {
@@ -802,6 +803,8 @@ const no: {
       trialNote: "14 dagers gratis prøveperiode. Kortet belastes automatisk etterpå med mindre du sier opp.",
       subscriptionCapNote: "Abonnementet dekker inntil 1500 samtidige lyttere.",
       eventTonoNote: "Sending i ett døgn. Dere setter selv opp dekningsområde (radius inntil 1000 m, eller polygon) etter betaling. TONO-kostnader for musikkbruk dekkes av arrangøren, ikke av Ådience.",
+      buyAnotherDayButton: "Kjøp en ny sendingsdag — 950 kr",
+      upgradeToYearButton: "Oppgrader til årsabonnement — 17 400 kr/år",
     },
   },
   admin: {

@@ -566,6 +566,8 @@ const en: Dictionary = {
       trialNote: "14-day free trial. Your card is charged automatically afterwards unless you cancel.",
       subscriptionCapNote: "The subscription covers up to 1500 concurrent listeners.",
       eventTonoNote: "Broadcast for one day. You set up the coverage area yourselves (radius up to 1000 m, or a polygon) after payment. TONO costs for music use are covered by the organizer, not by Ådience.",
+      buyAnotherDayButton: "Buy another broadcast day — 950 NOK",
+      upgradeToYearButton: "Upgrade to annual subscription — 17,400 NOK/yr",
     },
   },
   admin: {
