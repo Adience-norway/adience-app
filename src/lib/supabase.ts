@@ -165,6 +165,7 @@ export type Abonnement = {
   betalingsintervall: "maned" | "ar" | null;
   periode_start: string | null;
   periode_slutt: string | null;
+  event_dato: string | null;
   opprettet: string;
 };
 

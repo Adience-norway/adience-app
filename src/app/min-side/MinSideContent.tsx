@@ -687,6 +687,11 @@ function ArenaInfoTab({
           <div style={{ marginTop: "24px" }}>
             <ArenaInfoSection arena={arena} onSaved={onChanged} dict={dict} />
           </div>
+          {abonnement?.type === "engangsarrangement" && abonnement.status === "aktiv" && (
+            <div style={{ marginTop: "24px" }}>
+              <EnkeltarrangementSeksjon abonnement={abonnement} onChanged={onChanged} dict={dict} />
+            </div>
+          )}
           <div style={{ marginTop: "24px" }}>
             <GeofenceKartSection arena={arena} abonnement={abonnement} onSaved={onChanged} dict={dict} />
           </div>
@@ -872,10 +877,68 @@ function ArenaInfoSection({ arena, onSaved, dict }: { arena: Arena; onSaved: () 
 
 type LatLng = { lat: number; lng: number };
 
+// Vises kun mens arenaen har en aktiv engangsarrangement-rad (betalt via
+// /api/stripe/checkout). Eieren velger arrangementsdato her, og setter selv
+// opp dekningsområdet i geofence-seksjonen rett under -- taket der løftes
+// automatisk fra 500 til 1000 m mens denne raden er aktiv (se
+// enforce_arena_geofence_limits i databasen). Ingen automatisk
+// tilbakestilling: eieren endrer selv geofencen tilbake når arrangementet er
+// over.
+function EnkeltarrangementSeksjon({ abonnement, onChanged, dict }: { abonnement: Abonnement; onChanged: () => void; dict: Dictionary }) {
+  const t = dict.minSide.arenaInfo;
+  const [dato, setDato] = useState(abonnement.event_dato ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSave() {
+    setSaving(true);
+    setError("");
+    const { error } = await supabase.from("abonnementer").update({ event_dato: dato || null }).eq("id", abonnement.id);
+    setSaving(false);
+    if (error) { setError(error.message); return; }
+    setSaved(true);
+    onChanged();
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <div style={{ ...cardStyle, border: "1.5px solid #33D3C4" }}>
+      <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.eventTitle}</h3>
+      <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px", lineHeight: 1.6, marginBottom: "20px" }}>
+        {t.eventSubtitle}
+      </p>
+      <label style={fieldLabelStyle}>{t.eventDateLabel}</label>
+      <input
+        type="date"
+        value={dato}
+        onChange={(e) => setDato(e.target.value)}
+        style={{ ...inputStyle, maxWidth: "220px" }}
+      />
+      {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}
+      {saved && <p style={{ color: "#33D3C4", fontSize: "13px", marginTop: "12px" }}>{t.eventDateSaved}</p>}
+      <button
+        onClick={handleSave}
+        disabled={saving || dato === (abonnement.event_dato ?? "")}
+        style={{ ...tealBtnStyle, marginTop: "16px", opacity: (saving || dato === (abonnement.event_dato ?? "")) ? 0.5 : 1 }}
+      >
+        {saving ? t.saving : t.eventDateSave}
+      </button>
+      <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "16px", lineHeight: 1.5 }}>
+        {t.eventTonoNote}
+      </p>
+    </div>
+  );
+}
+
 function GeofenceKartSection({ arena, abonnement, onSaved, dict }: { arena: Arena; abonnement: Abonnement | null; onSaved: () => void; dict: Dictionary }) {
   const t = dict.minSide.geofence;
   const erDemo = arena.stream_id === ADIENCE_DEMO_STREAM_ID;
-  const radiusMax = erDemo ? 2000 : 500;
+  // Aktivt enkeltarrangement løfter selvbetjent-taket fra 500 til 1000 m --
+  // håndhevet i databasen (enforce_arena_geofence_limits), speilet her kun
+  // for at UI-sliderens grense stemmer med det som faktisk er lov å lagre.
+  const harAktivtArrangement = abonnement?.type === "engangsarrangement" && abonnement.status === "aktiv";
+  const radiusMax = erDemo ? 2000 : harAktivtArrangement ? 1000 : 500;
   // Selvbetjent polygon-tegning er en abonnementsfordel -- kunden kan da selv
   // spore opp den nøyaktige konturen på egen arena (f.eks. Wimbledon, Old
   // Trafford) og verifisere at dekningen ikke lekker utenfor. Uten aktivt
@@ -1031,7 +1094,7 @@ function GeofenceKartSection({ arena, abonnement, onSaved, dict }: { arena: Aren
           />
           {!erDemo && (
             <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "12px", marginTop: "8px" }}>
-              {t.radiusMaxHint}
+              {harAktivtArrangement ? t.radiusMaxHintArrangement : t.radiusMaxHint}
             </p>
           )}
           {error && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "12px" }}>{error}</p>}

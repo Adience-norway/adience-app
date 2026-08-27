@@ -132,6 +132,8 @@ const no: {
     arenaInfo: {
       contentTitle: string; contentSubtitle: string;
       detailsTitle: string; operatorHint: string;
+      eventTitle: string; eventSubtitle: string; eventDateLabel: string;
+      eventDateSave: string; eventDateSaved: string; eventTonoNote: string; saving: string;
     };
     kontaktinfo: {
       title: string; subtitle: string;
@@ -154,7 +156,7 @@ const no: {
       title: string; subtitle: string; radiusLabel: string; saved: string; saveButton: string; saving: string;
       manualTitle: string; manualSubtitlePrefix: string; manualSubtitleSuffix: string; manualCta: string;
       findingLocation: string; clickHint: string; placeInMapHint: string; savePosition: string;
-      polygonManagedByAdience: string; radiusMaxHint: string;
+      polygonManagedByAdience: string; radiusMaxHint: string; radiusMaxHintArrangement: string;
       subscriberSubtitle: string; modeSirkel: string; modePolygon: string;
       polygonMaxHint: string; polygonSaveButton: string; polygonMinPointsError: string;
       addressTitle: string; addressSubtitle: string;
@@ -637,6 +639,13 @@ const no: {
       contentSubtitle: "Det publikum ser i appen på arenaen — infotavle-innhold og holdmusikken som spilles før sendingen starter.",
       detailsTitle: "Arenadetaljer",
       operatorHint: "Adresse, dekningsområde og organisasjonsdetaljer kan kun endres av arenaeier.",
+      eventTitle: "Enkeltarrangement",
+      eventSubtitle: "Betalingen er bekreftet. Velg dato for arrangementet, og sett opp dekningsområdet (radius inntil 1000 m, eller polygon) i seksjonen under — taket er hevet fra 500 til 1000 m så lenge dette arrangementet er aktivt. Husk å endre det tilbake selv etter arrangementet.",
+      eventDateLabel: "Arrangementsdato",
+      eventDateSave: "Lagre dato",
+      eventDateSaved: "✓ Dato lagret",
+      eventTonoNote: "TONO-kostnader for musikkbruk under sendingen (streaming av musikk, konserter osv.) dekkes av arrangøren selv — ikke av Ådience.",
+      saving: "Lagrer…",
     },
     kontaktinfo: {
       title: "Arenainformasjon",
@@ -685,6 +694,7 @@ const no: {
       savePosition: "Lagre posisjon",
       polygonManagedByAdience: "Dette dekningsområdet er tegnet inn av Ådience som en del av årsabonnementet ditt. Ta kontakt med oss hvis noe skal justeres.",
       radiusMaxHint: "Maks 500 m selvbetjent. Trenger dere et større eller uregelmessig område (f.eks. en festivalplass eller golfbane), setter Ådience det opp for dere.",
+      radiusMaxHintArrangement: "Maks 1000 m mens enkeltarrangementet er aktivt. Husk å sette radiusen tilbake selv etter arrangementet.",
       subscriberSubtitle: "Som abonnent kan du tegne inn arenaens nøyaktige kontur selv — presist rundt tribuner, bane eller lokale, slik at dekningen aldri lekker utenfor.",
       modeSirkel: "Sirkel",
       modePolygon: "Polygon",
