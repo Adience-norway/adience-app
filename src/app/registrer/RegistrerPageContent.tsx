@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import { supabase } from "@/lib/supabase";
 import { sokAdresser, geokodAdresse, type AdresseForslag } from "@/lib/geonorge";
@@ -28,9 +28,6 @@ const KATEGORIER = [
 
 const LAND = ["Norge", "Sverige", "Danmark", "Finland", "Spania", "Tyskland", "UK", "Annet"];
 const KAPASITETER = ["Under 500", "500–2000", "2000–5000", "5000–15000", "15000+"];
-
-// Daily rate for one-off events — adjust when pricing engine is built
-const ENGANGS_PRIS_PER_DAG = 500; // kr/dag
 
 /* ─── HELPERS ─── */
 
@@ -123,7 +120,7 @@ function TypeSelector({ onSelect, t, locale }: { onSelect: (ft: FlowType) => voi
                   {t.typeSelector.engangs.description}
                 </div>
                 <div style={{ marginTop: "10px", display: "flex", gap: "8px", flexWrap: "wrap" as const }}>
-                  {[`${ENGANGS_PRIS_PER_DAG} ${t.typeSelector.engangs.chips[0]}`, ...t.typeSelector.engangs.chips.slice(1)].map(b => (
+                  {t.typeSelector.engangs.chips.map(b => (
                     <span key={b} style={{ ...chipStyle, borderColor: "rgba(120,190,32,0.25)", backgroundColor: "rgba(120,190,32,0.08)" }}>
                       <span style={{ color: "#78BE20" }}>✓</span> {b}
                     </span>
@@ -471,20 +468,21 @@ type EngangsFormData = {
   epost: string;
   telefon: string;
   passord: string;
-  periode_start: string;
-  periode_slutt: string;
-  geofence_radius: number;
   gdpr: boolean;
 };
 
+// Enkeltarrangement-registrering oppretter kun konto + arena (identisk med
+// ArenaForm i så måte) — dato, betaling (950 kr, Stripe) og dekningsområde
+// (radius inntil 1000 m, eller polygon) settes IKKE her lenger, men i Min
+// Side etter at e-posten er bekreftet og betalingen er gjennomført (se
+// EnkeltarrangementSeksjon i MinSideContent.tsx). emailRedirectTo peker
+// derfor til Min Side med en signal-parameter som starter betalingen
+// automatisk ved første innlogging.
 function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; locale: Locale }) {
-  const today = new Date().toISOString().split("T")[0];
-
   const [form, setForm] = useState<EngangsFormData>({
     arrangementsnavn: "", kategori: "", adresse_gate: "", postnummer: "", by: "",
     land: "Norge", org_nummer: "", fornavn: "", etternavn: "", epost: "", telefon: "", passord: "",
-    periode_start: today, periode_slutt: today,
-    geofence_radius: 250, gdpr: false,
+    gdpr: false,
   });
 
   const [lat, setLat] = useState<number | null>(null);
@@ -497,22 +495,8 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
   const [errorMsg, setErrorMsg] = useState("");
   const [streamId, setStreamId] = useState("");
   const [qrDataUrl, setQrDataUrl] = useState("");
-  const [savedTotalPris, setSavedTotalPris] = useState(0);
-  const [savedDays, setSavedDays] = useState(0);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-
-  const days = useMemo(() => {
-    if (!form.periode_start || !form.periode_slutt) return 1;
-    const diff = Math.ceil(
-      (new Date(form.periode_slutt).getTime() - new Date(form.periode_start).getTime()) / 86400000
-    ) + 1;
-    return Math.max(1, diff);
-  }, [form.periode_start, form.periode_slutt]);
-
-  const totalPris = days * ENGANGS_PRIS_PER_DAG;
-
-  const dateError = form.periode_slutt < form.periode_start ? t.engangsForm.dateError : null;
 
   useEffect(() => {
     const q = form.adresse_gate;
@@ -572,7 +556,6 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (dateError) return;
     setStatus("loading");
     setErrorMsg("");
 
@@ -598,7 +581,7 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
         logo_url = supabase.storage.from("arena-logoer").getPublicUrl(uploadData.path).data.publicUrl;
     }
 
-    const { data: arena, error: arenaError } = await supabase.from("arenaer").insert({
+    const { error: arenaError } = await supabase.from("arenaer").insert({
       arenanavn: form.arrangementsnavn,
       kategori: form.kategori || null,
       adresse: form.adresse_gate || null,
@@ -607,7 +590,6 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
       by: form.by || null,
       land: form.land || null,
       lat: finalLat, lng: finalLng,
-      geofence_radius: form.geofence_radius,
       org_nummer: form.org_nummer || null,
       fornavn: form.fornavn || null,
       etternavn: form.etternavn || null,
@@ -622,29 +604,21 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
       return;
     }
 
-    const { error: abonnementError } = await supabase.from("abonnementer").insert({
-      arena_id: arena.id,
-      type: "engangsarrangement",
-      pris_per_dag: ENGANGS_PRIS_PER_DAG,
-      total_pris: totalPris,
-      periode_start: new Date(form.periode_start).toISOString(),
-      periode_slutt: new Date(form.periode_slutt + "T23:59:59").toISOString(),
-    });
-
-    if (abonnementError) {
-      setStatus("error");
-      setErrorMsg(abonnementError.message);
-      return;
-    }
-
     // Creates a real Supabase Auth account so the owner can later log in on /min-side.
     // A database trigger auto-creates the matching `brukere` row on signup, links it to the
     // arena just created above (matched by e-post), and fills in the name — all server-side,
     // so it works even before the user confirms their e-mail (no client session needed).
+    // emailRedirectTo sends them straight into the Stripe checkout for the event plan on
+    // first login (see Dashboard's autoStartPlan handling in MinSideContent.tsx) — no
+    // separate "estimate now, invoice later" step exists anymore for this flow.
+    const minSidePath = locale === "en" ? "/en/min-side" : "/min-side";
     const { error: authError } = await supabase.auth.signUp({
       email: form.epost,
       password: form.passord,
-      options: { data: { fornavn: form.fornavn, etternavn: form.etternavn, sprak: locale } },
+      options: {
+        data: { fornavn: form.fornavn, etternavn: form.etternavn, sprak: locale },
+        emailRedirectTo: `${window.location.origin}${minSidePath}?start_checkout=event`,
+      },
     });
     if (authError) { setStatus("error"); setErrorMsg(authError.message); return; }
 
@@ -655,15 +629,11 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
       setQrDataUrl(qr);
     } catch { /* non-critical */ }
 
-    setSavedTotalPris(totalPris);
-    setSavedDays(days);
     setStreamId(stream_id);
     setStatus("success");
   }
 
   const homeHref = locale === "en" ? "/en" : "/";
-  const dateLocale = locale === "en" ? "en-GB" : "nb-NO";
-  const numberLocale = locale === "en" ? "en-GB" : "nb-NO";
 
   if (status === "success") {
     return (
@@ -676,23 +646,6 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
             <p style={successSubStyle}>
               {t.engangsForm.success.subtitlePrefix} <strong>{form.epost}</strong> {t.engangsForm.success.subtitleSuffix}
             </p>
-
-            <div style={{ ...streamIdBoxStyle, borderColor: "rgba(120,190,32,0.2)", backgroundColor: "rgba(120,190,32,0.04)", marginBottom: "16px" }}>
-              <div style={monoLabelStyle}>{t.engangsForm.success.periodLabel}</div>
-              <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "15px", color: "#78BE20", letterSpacing: "0.04em" }}>
-                {new Date(form.periode_start).toLocaleDateString(dateLocale)} → {new Date(form.periode_slutt).toLocaleDateString(dateLocale)}
-              </div>
-            </div>
-
-            <div style={{ ...streamIdBoxStyle, borderColor: "rgba(120,190,32,0.2)", backgroundColor: "rgba(120,190,32,0.04)", marginBottom: "24px" }}>
-              <div style={monoLabelStyle}>{t.engangsForm.success.invoiceLabel}</div>
-              <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "13px", color: "rgba(255,255,255,0.5)", marginBottom: "4px" }}>
-                {savedDays} {savedDays !== 1 ? t.engangsForm.dayUnitPlural : t.engangsForm.dayUnit} × {ENGANGS_PRIS_PER_DAG.toLocaleString(numberLocale)} kr/dag
-              </div>
-              <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "22px", color: "#78BE20", fontWeight: 700 }}>
-                {savedTotalPris.toLocaleString(numberLocale)} kr
-              </div>
-            </div>
 
             <div style={streamIdBoxStyle}>
               <div style={monoLabelStyle}>{t.common.streamIdLabel}</div>
@@ -727,7 +680,7 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
           <span style={{ ...labelStyle, color: "#78BE20" }}>{t.engangsForm.label}</span>
           <h1 style={headingStyle}>{t.engangsForm.title}</h1>
           <p style={subheadStyle}>
-            {t.engangsForm.subtitlePrefix} {ENGANGS_PRIS_PER_DAG} {t.engangsForm.subtitleSuffix}
+            {t.engangsForm.subtitlePrefix} {t.engangsForm.subtitleSuffix}
           </p>
         </div>
 
@@ -747,42 +700,6 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
           <FormField label={t.common.fieldOrgNummer}>
             <Input name="org_nummer" value={form.org_nummer} onChange={handleChange} placeholder={t.common.placeholderOrgNummer} />
           </FormField>
-
-          <Divider />
-
-          {/* ── Periode og pris ── */}
-          <SectionLabel>{t.common.sectionPeriod}</SectionLabel>
-          <div style={gridTwo}>
-            <FormField label={t.engangsForm.fieldStartdato}>
-              <Input type="date" name="periode_start" value={form.periode_start} onChange={handleChange} required />
-            </FormField>
-            <FormField label={t.engangsForm.fieldSluttdato}>
-              <Input type="date" name="periode_slutt" value={form.periode_slutt} onChange={handleChange} required />
-            </FormField>
-          </div>
-          {dateError && <p style={{ color: "#D94F4F", fontSize: "13px", marginTop: "-10px", marginBottom: "12px" }}>{dateError}</p>}
-
-          {/* Price summary */}
-          <div style={{
-            backgroundColor: "rgba(120,190,32,0.07)",
-            border: "1px solid rgba(120,190,32,0.22)",
-            borderRadius: "10px",
-            padding: "16px 20px",
-            marginBottom: "20px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}>
-            <div>
-              <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)", fontFamily: "var(--font-ibm-plex-mono), monospace", letterSpacing: "0.08em", marginBottom: "4px" }}>{t.engangsForm.estimatedCostLabel}</div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>
-                {days} {days !== 1 ? t.engangsForm.dayUnitPlural : t.engangsForm.dayUnit} × {ENGANGS_PRIS_PER_DAG.toLocaleString(numberLocale)} kr/dag
-              </div>
-            </div>
-            <div style={{ fontFamily: "var(--font-ibm-plex-mono), monospace", fontSize: "24px", fontWeight: 700, color: "#78BE20" }}>
-              {totalPris.toLocaleString(numberLocale)} kr
-            </div>
-          </div>
 
           <Divider />
 
@@ -816,19 +733,6 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
             <SelectInput name="land" value={form.land} onChange={handleChange}>{LAND.map(l => <option key={l} value={l}>{l}</option>)}</SelectInput>
           </FormField>
 
-          <FormField label={`${t.engangsForm.geofenceLabel} ${form.geofence_radius} m`}>
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <input
-                type="range" name="geofence_radius" min={50} max={1000} step={10}
-                value={form.geofence_radius} onChange={handleChange}
-                style={{ flex: 1, accentColor: "#33D3C4", cursor: "pointer" }}
-              />
-              <span style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", fontFamily: "var(--font-ibm-plex-mono), monospace", flexShrink: 0, width: "60px", textAlign: "right" }}>
-                {form.geofence_radius} m
-              </span>
-            </div>
-          </FormField>
-
           <Divider />
 
           {/* ── Kontaktperson ── */}
@@ -860,10 +764,10 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
 
           <button
             type="submit"
-            disabled={status === "loading" || !!dateError}
+            disabled={status === "loading"}
             style={{ ...submitBtnStyle, backgroundColor: "#78BE20", color: "#073E46", opacity: status === "loading" ? 0.7 : 1, cursor: status === "loading" ? "not-allowed" : "pointer" }}
           >
-            {status === "loading" ? t.common.registering : `${t.engangsForm.submitPrefix} ${totalPris.toLocaleString(numberLocale)} kr`}
+            {status === "loading" ? t.common.registering : t.engangsForm.submit}
           </button>
           <p style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: "13px", marginTop: "16px" }}>{t.engangsForm.footerNote}</p>
         </form>

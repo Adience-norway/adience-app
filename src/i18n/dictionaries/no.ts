@@ -52,13 +52,8 @@ const no: {
     };
     engangsForm: {
       label: string; title: string; subtitlePrefix: string; subtitleSuffix: string;
-      dateError: string; fieldStartdato: string; fieldSluttdato: string;
-      estimatedCostLabel: string; dayUnit: string; dayUnitPlural: string;
-      geofenceLabel: string; duplicateError: string; submitPrefix: string; footerNote: string;
-      success: {
-        title: string; subtitlePrefix: string; subtitleSuffix: string;
-        periodLabel: string; invoiceLabel: string;
-      };
+      duplicateError: string; submit: string; footerNote: string;
+      success: { title: string; subtitlePrefix: string; subtitleSuffix: string };
     };
   };
   cards: {
@@ -426,8 +421,8 @@ const no: {
       },
       engangs: {
         title: "Enkeltarrangement",
-        description: "Du arrangerer et enkelt event på en lokasjon som ikke har Ådience fra før — f.eks. konsert, festival eller utendørsarrangement. Betaling per dag.",
-        chips: ["kr/dag", "Kun for perioden", "Manuell faktura"],
+        description: "Du arrangerer et enkelt event på en lokasjon som ikke har Ådience fra før — f.eks. konsert, festival eller utendørsarrangement. Betal med kort, sett opp resten selv etter bekreftelse.",
+        chips: ["950 kr", "Ett døgn", "Betal med kort"],
       },
       footerNote: "Ådience følger bygget — arenaer med årsabonnement gir gratis tilgang til alle som bruker stedet.",
     },
@@ -448,24 +443,15 @@ const no: {
     engangsForm: {
       label: "ENKELTARRANGEMENT",
       title: "Registrer arrangement",
-      subtitlePrefix: "For arrangementer på lokasjoner uten Ådience-abonnement. Faktureres",
-      subtitleSuffix: "kr/dag etter arrangementet.",
-      dateError: "Sluttdato kan ikke være før startdato.",
-      fieldStartdato: "Startdato *",
-      fieldSluttdato: "Sluttdato *",
-      estimatedCostLabel: "ESTIMERT KOSTNAD",
-      dayUnit: "dag",
-      dayUnitPlural: "dager",
-      geofenceLabel: "Geofence-radius:",
+      subtitlePrefix: "For arrangementer på lokasjoner uten Ådience fra før. Bekreft e-posten din, betal 950 kr for",
+      subtitleSuffix: "ett døgns sending, og sett selv opp dato og dekningsområde etterpå.",
       duplicateError: "Dette organisasjonsnummeret er allerede registrert.",
-      submitPrefix: "Registrer arrangement —",
-      footerNote: "Faktura sendes etter arrangementet. Ingen betaling kreves nå.",
+      submit: "Registrer arrangement",
+      footerNote: "Du bekrefter e-posten din først. Deretter betaler du og setter opp arrangementet i Min Side.",
       success: {
-        title: "Arrangementet er registrert!",
-        subtitlePrefix: "Vi sender faktura til",
-        subtitleSuffix: "etter arrangementet.",
-        periodLabel: "PERIODE",
-        invoiceLabel: "ESTIMERT FAKTURA",
+        title: "Nesten i mål!",
+        subtitlePrefix: "Vi har sendt en bekreftelseslenke til",
+        subtitleSuffix: "— trykk på den for å gå videre til betaling og sette opp arrangementet.",
       },
     },
   },

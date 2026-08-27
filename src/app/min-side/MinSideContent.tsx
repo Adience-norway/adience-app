@@ -66,6 +66,15 @@ function initialTabFromUrl(): Tab {
   return (TAB_IDS as string[]).includes(hash) ? (hash as Tab) : "oversikt";
 }
 
+// ?start_checkout=event kommer fra emailRedirectTo i registrer/
+// RegistrerPageContent.tsx sin enkeltarrangement-registrering -- signaliserer
+// at Abonnement-seksjonen skal starte betaling for arrangementet automatisk
+// ved første innlogging, uten et ekstra klikk.
+function initialStartCheckoutPlanFromUrl(): "event" | null {
+  if (typeof window === "undefined") return null;
+  return new URLSearchParams(window.location.search).get("start_checkout") === "event" ? "event" : null;
+}
+
 // Samme lister som registrer/RegistrerPageContent.tsx sitt registreringsskjema
 // bruker — må holdes i sync manuelt (ingen delt konstant-fil i denne
 // kodebasen), slik at et lagret KATEGORI/LAND/KAPASITET-valg her alltid
@@ -248,6 +257,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   const t = dict.minSide;
   const homeHref = locale === "en" ? "/en" : "/";
   const [tab, setTab] = useState<Tab>(initialTabFromUrl);
+  const [startCheckoutPlan] = useState<"event" | null>(initialStartCheckoutPlanFromUrl);
   const [loading, setLoading] = useState(true);
   const [arena, setArena] = useState<Arena | null>(null);
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null);
@@ -471,7 +481,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
         </nav>
 
         {tab === "oversikt" && arena && (
-          <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} />
+          <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} startCheckoutPlan={startCheckoutPlan} />
         )}
         {tab === "arenainfo" && arena && (
           <ArenaInfoTab arena={arena} abonnement={abonnement} minRolle={minRolle} onChanged={loadData} dict={dict} locale={locale} />
@@ -491,11 +501,11 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
 /* ─── 1. OVERSIKT ─── */
 
 function OversiktSection({
-  arena, abonnement, pilot, arrangementer, speakerteam, onChanged, dict, locale,
+  arena, abonnement, pilot, arrangementer, speakerteam, onChanged, dict, locale, startCheckoutPlan,
 }: {
   arena: Arena; abonnement: Abonnement | null; pilot: PilotPeriode | null;
   arrangementer: Arrangement[]; speakerteam: SpeakerTeam[]; onChanged: () => void;
-  dict: Dictionary; locale: Locale;
+  dict: Dictionary; locale: Locale; startCheckoutPlan?: "event" | null;
 }) {
   const t = dict.minSide.oversikt;
   const dagerIgjen = pilot ? Math.max(0, Math.ceil((new Date(pilot.slutt_dato).getTime() - Date.now()) / 86_400_000)) : null;
@@ -541,7 +551,7 @@ function OversiktSection({
       </div>
 
       <div style={{ marginTop: "24px" }}>
-        <AbonnementSection arenaId={arena.id} abonnement={abonnement} pilot={pilot} dict={dict} locale={locale} />
+        <AbonnementSection arenaId={arena.id} abonnement={abonnement} pilot={pilot} dict={dict} locale={locale} autoStartPlan={startCheckoutPlan} />
       </div>
     </div>
   );
@@ -1921,8 +1931,8 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
 /* ─── 8. ABONNEMENT ─── */
 
 function AbonnementSection({
-  arenaId, abonnement, pilot, dict, locale,
-}: { arenaId: string; abonnement: Abonnement | null; pilot: PilotPeriode | null; dict: Dictionary; locale: Locale }) {
+  arenaId, abonnement, pilot, dict, locale, autoStartPlan,
+}: { arenaId: string; abonnement: Abonnement | null; pilot: PilotPeriode | null; dict: Dictionary; locale: Locale; autoStartPlan?: "event" | null }) {
   const t = dict.minSide.abonnement;
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [checkoutPlan, setCheckoutPlan] = useState<"month" | "year" | "event" | null>(null);
@@ -1953,6 +1963,18 @@ function AbonnementSection({
     }
     window.location.href = data.url;
   }
+
+  // Enkeltarrangement-registreringen (registrer/RegistrerPageContent.tsx)
+  // sender ?start_checkout=event i emailRedirectTo -- første gang arenaen
+  // logger inn (ingen abonnement ennå), sendes de rett til betaling uten et
+  // ekstra klikk, per eksplisitt ønske fra brukeren ("må du betale og
+  // deretter sette opp").
+  useEffect(() => {
+    if (autoStartPlan === "event" && !abonnement && checkoutPlan === null) {
+      handleCheckout("event");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartPlan, abonnement]);
 
   return (
     <div>
