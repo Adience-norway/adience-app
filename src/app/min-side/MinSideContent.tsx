@@ -75,6 +75,22 @@ function initialStartCheckoutPlanFromUrl(): "event" | null {
   return new URLSearchParams(window.location.search).get("start_checkout") === "event" ? "event" : null;
 }
 
+type CheckoutResult = { status: "success" | "cancelled"; plan: "month" | "year" | "event" | null };
+
+// Leser ?checkout=success|cancelled&plan=... som Stripe Checkout sender
+// tilbake til (se success_url/cancel_url i /api/stripe/checkout). Vises som
+// en feiringsmelding rett i Oversikt-fanen -- uten dette forsvinner en
+// vellykket betaling sporløst inn i "bare en ny rad i en tabell", uten at
+// eieren faktisk merker at noe nytt ble låst opp.
+function initialCheckoutResultFromUrl(): CheckoutResult | null {
+  if (typeof window === "undefined") return null;
+  const params = new URLSearchParams(window.location.search);
+  const status = params.get("checkout");
+  if (status !== "success" && status !== "cancelled") return null;
+  const plan = params.get("plan");
+  return { status, plan: plan === "month" || plan === "year" || plan === "event" ? plan : null };
+}
+
 // Samme lister som registrer/RegistrerPageContent.tsx sitt registreringsskjema
 // bruker — må holdes i sync manuelt (ingen delt konstant-fil i denne
 // kodebasen), slik at et lagret KATEGORI/LAND/KAPASITET-valg her alltid
@@ -258,6 +274,16 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
   const homeHref = locale === "en" ? "/en" : "/";
   const [tab, setTab] = useState<Tab>(initialTabFromUrl);
   const [startCheckoutPlan] = useState<"event" | null>(initialStartCheckoutPlanFromUrl);
+  const [checkoutResult, setCheckoutResult] = useState<CheckoutResult | null>(initialCheckoutResultFromUrl);
+  useEffect(() => {
+    if (!checkoutResult) return;
+    // Fjerner checkout/plan fra URL-en med det samme, slik at en refresh ikke
+    // viser feiringsmeldingen på nytt.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("checkout");
+    url.searchParams.delete("plan");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [checkoutResult]);
   const [loading, setLoading] = useState(true);
   const [arena, setArena] = useState<Arena | null>(null);
   const [abonnement, setAbonnement] = useState<Abonnement | null>(null);
@@ -481,7 +507,7 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
         </nav>
 
         {tab === "oversikt" && arena && (
-          <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} startCheckoutPlan={startCheckoutPlan} />
+          <OversiktSection arena={arena} abonnement={abonnement} pilot={pilot} arrangementer={arrangementer} speakerteam={speakerteam} onChanged={loadData} dict={dict} locale={locale} startCheckoutPlan={startCheckoutPlan} checkoutResult={checkoutResult} onDismissCheckoutResult={() => setCheckoutResult(null)} />
         )}
         {tab === "arenainfo" && arena && (
           <ArenaInfoTab arena={arena} abonnement={abonnement} minRolle={minRolle} onChanged={loadData} dict={dict} locale={locale} />
@@ -501,11 +527,12 @@ function Dashboard({ session, dict, locale }: { session: Session; dict: Dictiona
 /* ─── 1. OVERSIKT ─── */
 
 function OversiktSection({
-  arena, abonnement, pilot, arrangementer, speakerteam, onChanged, dict, locale, startCheckoutPlan,
+  arena, abonnement, pilot, arrangementer, speakerteam, onChanged, dict, locale, startCheckoutPlan, checkoutResult, onDismissCheckoutResult,
 }: {
   arena: Arena; abonnement: Abonnement | null; pilot: PilotPeriode | null;
   arrangementer: Arrangement[]; speakerteam: SpeakerTeam[]; onChanged: () => void;
   dict: Dictionary; locale: Locale; startCheckoutPlan?: "event" | null;
+  checkoutResult?: CheckoutResult | null; onDismissCheckoutResult?: () => void;
 }) {
   const t = dict.minSide.oversikt;
   const dagerIgjen = pilot ? Math.max(0, Math.ceil((new Date(pilot.slutt_dato).getTime() - Date.now()) / 86_400_000)) : null;
@@ -514,6 +541,21 @@ function OversiktSection({
 
   return (
     <div>
+      {checkoutResult?.status === "success" && (
+        <div style={{
+          ...cardStyle, marginBottom: "24px",
+          border: "1.5px solid #33D3C4", backgroundColor: "rgba(51,211,196,0.08)",
+          display: "flex", alignItems: "center", justifyContent: "space-between", gap: "16px", flexWrap: "wrap" as const,
+        }}>
+          <p style={{ color: "#fff", fontSize: "15px", lineHeight: 1.6, margin: 0 }}>
+            {checkoutResult.plan === "month" && `🎉 ${t.checkoutSuccessMonth}`}
+            {checkoutResult.plan === "year" && `🎉 ${t.checkoutSuccessYear}`}
+            {checkoutResult.plan === "event" && `✅ ${t.checkoutSuccessEvent}`}
+            {!checkoutResult.plan && `✅ ${t.checkoutSuccessGeneric}`}
+          </p>
+          <button onClick={onDismissCheckoutResult} style={{ ...ghostBtnStyle, flexShrink: 0 }}>{t.checkoutSuccessClose}</button>
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px", marginBottom: "32px" }}>
         <StatCard label={t.statStreaming} value={arena.streaming_aktiv ? t.statActive : t.statInactive} accent={arena.streaming_aktiv} />
         <StatCard label={t.statUpcomingEvents} value={String(kommendeArrangementer.length)} />
@@ -1944,6 +1986,10 @@ function AbonnementSection({
   // etter en avsluttet periode (abonnement er da ikke lenger null).
   const kvalifisererForProve = !abonnement;
 
+  const [portalLoading, setPortalLoading] = useState(false);
+  const erAvsluttet = abonnement?.status === "avsluttet";
+  const harBetalingsproblem = abonnement?.status === "betalingsproblem";
+
   async function handleCheckout(plan: "month" | "year" | "event") {
     setCheckoutPlan(plan);
     setCheckoutError("");
@@ -1958,6 +2004,28 @@ function AbonnementSection({
     const data = await res.json();
     if (!res.ok || !data.url) {
       setCheckoutPlan(null);
+      setCheckoutError(data.error ?? t.checkoutError);
+      return;
+    }
+    window.location.href = data.url;
+  }
+
+  // Stripe sin hostede Customer Portal -- selvbetjent kortoppdatering,
+  // kvitteringer og oppsigelse, uten at vi bygger noe av det selv.
+  async function handlePortal() {
+    setPortalLoading(true);
+    setCheckoutError("");
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (!accessToken) { setPortalLoading(false); setCheckoutError(t.checkoutError); return; }
+    const res = await fetch("/api/stripe/portal", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify({ arenaId, locale }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.url) {
+      setPortalLoading(false);
       setCheckoutError(data.error ?? t.checkoutError);
       return;
     }
@@ -1986,6 +2054,15 @@ function AbonnementSection({
           {pilot?.status === "aktiv" && <InfoRow label={t.pilotDaysLabel} value={String(dagerIgjen)} />}
           {abonnement?.total_pris != null && <InfoRow label={t.totalPriceLabel} value={`${abonnement.total_pris} kr`} />}
         </div>
+
+        {harBetalingsproblem && (
+          <div style={{ backgroundColor: "rgba(217,79,79,0.1)", border: "1px solid rgba(217,79,79,0.35)", borderRadius: "10px", padding: "14px 18px", marginTop: "20px" }}>
+            <p style={{ color: "#fff", fontSize: "14px", lineHeight: 1.5, margin: 0 }}>⚠️ {t.paymentProblemNote}</p>
+            <button onClick={handlePortal} disabled={portalLoading} style={{ ...tealBtnStyle, marginTop: "12px", opacity: portalLoading ? 0.6 : 1 }}>
+              {portalLoading ? t.checkingOut : t.updatePaymentButton}
+            </button>
+          </div>
+        )}
 
         {/* Fremhevede snarveier -- reelt "to klikk"-kjøp: kortet ligger allerede
             lagret hos Stripe for en returnerende kunde, så disse hopper rett
@@ -2017,15 +2094,22 @@ function AbonnementSection({
           // prøveperiode, eller allerede på årsabonnement) er dette fortsatt
           // hovedknappen.
           const harSnarvei = abonnement?.type === "engangsarrangement" || (abonnement?.type === "manedlig" && abonnement.status === "aktiv");
+          const knappTekst = kvalifisererForProve ? t.startTrialButton : erAvsluttet ? t.reactivateButton : t.upgradeButton;
           return (
             <button
               onClick={() => setShowUpgrade(true)}
               style={harSnarvei ? { ...ghostBtnStyle, marginTop: "12px" } : { ...coralBtnStyleAuto, marginTop: "24px" }}
             >
-              {kvalifisererForProve ? t.startTrialButton : t.upgradeButton}
+              {knappTekst}
             </button>
           );
         })()}
+
+        {!!abonnement?.stripe_customer_id && (
+          <button onClick={handlePortal} disabled={portalLoading} style={{ ...ghostBtnStyle, marginTop: "12px", opacity: portalLoading ? 0.6 : 1 }}>
+            {portalLoading ? t.checkingOut : t.managePaymentButton}
+          </button>
+        )}
       </div>
 
       {showUpgrade && (

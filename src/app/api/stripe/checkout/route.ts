@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   const adminClient = createClient(supabaseUrl, serviceRoleKey);
   const { data: arena } = await adminClient
     .from("arenaer")
-    .select("arenanavn, epost")
+    .select("arenanavn, epost, adresse_gate, postnummer")
     .eq("id", arenaId)
     .single();
   const { data: eksisterendeAbonnement } = await adminClient
@@ -102,8 +102,28 @@ export async function POST(req: NextRequest) {
   // 14-dagers prøveperiode: kun ment for førstegangsregistrering (se
   // registrer/RegistrerPageContent.tsx) -- kortet registreres med det samme,
   // ingen belastning før prøveperioden er over, og abonnementet starter
-  // automatisk med mindre eieren aktivt sier opp innen fristen.
-  const trial = body.trial === true && mode === "subscription";
+  // automatisk med mindre eieren aktivt sier opp innen fristen. Sperret hvis
+  // en ANNEN arena på samme adresse allerede har vært gjennom minst ett
+  // abonnement/arrangement før -- ellers kan noen bare opprette en ny konto
+  // på samme sted for å hente ut gratis prøveperiode på nytt.
+  let adresseAlleredeBrukt = false;
+  if (body.trial === true && mode === "subscription" && arena?.adresse_gate && arena?.postnummer) {
+    const { data: andreArenaerPaSammeAdresse } = await adminClient
+      .from("arenaer")
+      .select("id")
+      .neq("id", arenaId)
+      .ilike("adresse_gate", arena.adresse_gate.trim())
+      .eq("postnummer", arena.postnummer.trim());
+    const andreArenaIder = (andreArenaerPaSammeAdresse ?? []).map(a => a.id);
+    if (andreArenaIder.length > 0) {
+      const { count } = await adminClient
+        .from("abonnementer")
+        .select("id", { count: "exact", head: true })
+        .in("arena_id", andreArenaIder);
+      adresseAlleredeBrukt = (count ?? 0) > 0;
+    }
+  }
+  const trial = body.trial === true && mode === "subscription" && !adresseAlleredeBrukt;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -112,8 +132,11 @@ export async function POST(req: NextRequest) {
       customer: eksisterendeAbonnement?.stripe_customer_id ?? undefined,
       customer_email: eksisterendeAbonnement?.stripe_customer_id ? undefined : (arena?.epost ?? undefined),
       client_reference_id: arenaId,
-      success_url: `${minSideUrl}#oversikt?checkout=success`,
-      cancel_url: `${minSideUrl}#oversikt?checkout=cancelled`,
+      // Spørrestrengen må stå FØR hash-fragmentet for at URLSearchParams på
+      // mottakersiden faktisk skal kunne lese den (alt etter # er kun tekst
+      // i fragmentet, ikke en ekte query-parameter).
+      success_url: `${minSideUrl}?checkout=success&plan=${plan}#oversikt`,
+      cancel_url: `${minSideUrl}?checkout=cancelled#oversikt`,
       metadata: { arena_id: arenaId, plan, arenanavn: arena?.arenanavn ?? "" },
       subscription_data: mode === "subscription"
         ? {

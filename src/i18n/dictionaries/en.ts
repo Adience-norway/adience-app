@@ -383,6 +383,11 @@ const en: Dictionary = {
       stepStatsComing: "Statistics will show up here once you've had events",
       listenersTitle: "Listener numbers and engagement",
       listenersComing: "Real-time listener numbers and AI-based peak-engagement insights will appear here once the streaming integration is connected.",
+      checkoutSuccessMonth: "Congratulations! Your subscription is active — you now have room for 1500 concurrent listeners.",
+      checkoutSuccessYear: "Congratulations! Your annual subscription is active — you now have room for 1500 concurrent listeners. Hooray!",
+      checkoutSuccessEvent: "Payment confirmed! Set up the date and coverage area for your event below.",
+      checkoutSuccessGeneric: "Payment confirmed!",
+      checkoutSuccessClose: "Close",
     },
     arenaInfo: {
       contentTitle: "Content in the app",
@@ -568,6 +573,10 @@ const en: Dictionary = {
       eventTonoNote: "Broadcast for one day. You set up the coverage area yourselves (radius up to 1000 m, or a polygon) after payment. TONO costs for music use are covered by the organizer, not by Ådience.",
       buyAnotherDayButton: "Buy another broadcast day — 950 NOK",
       upgradeToYearButton: "Upgrade to annual subscription — 17,400 NOK/yr",
+      paymentProblemNote: "We couldn't charge your card. Stripe will keep retrying automatically for a while, but please update your card to avoid a service interruption.",
+      updatePaymentButton: "Update payment card",
+      managePaymentButton: "Manage billing and receipts",
+      reactivateButton: "Reactivate subscription",
     },
   },
   admin: {

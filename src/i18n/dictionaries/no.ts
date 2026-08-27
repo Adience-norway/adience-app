@@ -123,6 +123,8 @@ const no: {
       nextStepsTitle: string;
       stepGeofence: string; stepSpeakerteam: string; stepPilotExpiringPrefix: string; stepPilotExpiringSuffix: string; stepStatsComing: string;
       listenersTitle: string; listenersComing: string;
+      checkoutSuccessMonth: string; checkoutSuccessYear: string; checkoutSuccessEvent: string;
+      checkoutSuccessGeneric: string; checkoutSuccessClose: string;
     };
     arenaInfo: {
       contentTitle: string; contentSubtitle: string;
@@ -206,6 +208,7 @@ const no: {
       startTrialButton: string; modalTextTrial: string; trialNote: string;
       subscriptionCapNote: string; eventTonoNote: string;
       buyAnotherDayButton: string; upgradeToYearButton: string;
+      paymentProblemNote: string; updatePaymentButton: string; managePaymentButton: string; reactivateButton: string;
     };
   };
   admin: {
@@ -620,6 +623,11 @@ const no: {
       stepStatsComing: "Statistikk vises her så snart dere har hatt arrangementer",
       listenersTitle: "Lyttertall og engasjement",
       listenersComing: "Sanntids lyttertall og AI-basert toppengasjement-innsikt kommer her når streaming-integrasjonen er koblet på.",
+      checkoutSuccessMonth: "Gratulerer! Abonnementet er aktivert — dere har nå plass til 1500 samtidige lyttere.",
+      checkoutSuccessYear: "Gratulerer! Årsabonnementet er aktivert — dere har nå plass til 1500 samtidige lyttere. Hurra!",
+      checkoutSuccessEvent: "Betalingen er bekreftet! Sett opp dato og dekningsområde for arrangementet under.",
+      checkoutSuccessGeneric: "Betalingen er bekreftet!",
+      checkoutSuccessClose: "Lukk",
     },
     arenaInfo: {
       contentTitle: "Innhold i appen",
@@ -805,6 +813,10 @@ const no: {
       eventTonoNote: "Sending i ett døgn. Dere setter selv opp dekningsområde (radius inntil 1000 m, eller polygon) etter betaling. TONO-kostnader for musikkbruk dekkes av arrangøren, ikke av Ådience.",
       buyAnotherDayButton: "Kjøp en ny sendingsdag — 950 kr",
       upgradeToYearButton: "Oppgrader til årsabonnement — 17 400 kr/år",
+      paymentProblemNote: "Vi klarte ikke å belaste kortet ditt. Stripe prøver automatisk igjen en periode, men oppdater gjerne kortet ditt for å unngå avbrudd i tjenesten.",
+      updatePaymentButton: "Oppdater betalingskort",
+      managePaymentButton: "Administrer betaling og kvitteringer",
+      reactivateButton: "Reaktiver abonnementet",
     },
   },
   admin: {

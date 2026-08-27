@@ -80,8 +80,18 @@ export async function POST(req: NextRequest) {
 
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
-        const aktiv = sub.status === "active" || sub.status === "trialing";
-        const nyStatus = aktiv ? "aktiv" : "avsluttet";
+        // past_due = Stripe prøver fortsatt på nytt (Smart Retries, typisk
+        // 1-2 uker) -- ikke behandle som avsluttet med det samme, ellers
+        // mister kunden tjenesten på dag én av et enkelt mislykket kortforsøk,
+        // lenge før Stripe faktisk har gitt opp. streaming_aktiv holdes derfor
+        // på under nåde-perioden; kun status endres, så Min Side kan vise et
+        // tydelig "oppdater kortet ditt"-varsel.
+        const streamingAktiv = sub.status === "active" || sub.status === "trialing" || sub.status === "past_due";
+        const nyStatus = sub.status === "active" || sub.status === "trialing"
+          ? "aktiv"
+          : sub.status === "past_due"
+            ? "betalingsproblem"
+            : "avsluttet";
         const item = sub.items.data[0];
         await supabase
           .from("abonnementer")
@@ -94,7 +104,7 @@ export async function POST(req: NextRequest) {
 
         const arenaId = sub.metadata?.arena_id;
         if (arenaId) {
-          await supabase.from("arenaer").update({ streaming_aktiv: aktiv }).eq("id", arenaId);
+          await supabase.from("arenaer").update({ streaming_aktiv: streamingAktiv }).eq("id", arenaId);
         }
         break;
       }

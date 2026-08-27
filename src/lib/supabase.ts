@@ -150,7 +150,7 @@ export type KursModulCover = {
   oppdatert: string;
 };
 
-export type AbonnementStatus = "lead" | "demo_forespurt" | "pilot_aktiv" | "aktiv" | "avsluttet";
+export type AbonnementStatus = "lead" | "demo_forespurt" | "pilot_aktiv" | "aktiv" | "betalingsproblem" | "avsluttet";
 
 export type Abonnement = {
   id: string;
