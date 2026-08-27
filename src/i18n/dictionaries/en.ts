@@ -4,6 +4,7 @@ const en: Dictionary = {
   home: {
     nav: {
       features: "Features",
+      pricing: "Pricing",
       download: "Download",
       demo: "Demo",
       cast: "Cast",
@@ -11,7 +12,7 @@ const en: Dictionary = {
       minSide: "My page",
     },
     hero: {
-      badge: "LIVE STREAMING · 0.5 SEC DELAY",
+      badge: "LIVE STREAMING · REAL-TIME",
       headlinePrefix: "Raise the",
       subtext: "The exclusive audio channel for audiences physically present at the venue. Commentary, stats, and exclusive content — straight to your ear.",
       followLabel: "Follow the story behind Ådience",
@@ -27,6 +28,34 @@ const en: Dictionary = {
       delay: { value: "Real-time", label: "Delay" },
       uptime: { value: "99.99%", label: "Uptime" },
       encryption: { value: "256-bit", label: "AES encryption" },
+    },
+    pricing: {
+      eyebrow: "PRICING",
+      title: "Simple, predictable pricing",
+      subtitle: "No hidden costs. Start with a free trial — your card isn't charged until it ends.",
+      month: {
+        title: "Monthly subscription",
+        price: "1950 NOK",
+        period: "/mo",
+        note: "Up to 1500 concurrent listeners. 14-day free trial.",
+        cta: "Get started",
+      },
+      year: {
+        title: "Annual subscription",
+        price: "17,400 NOK",
+        period: "/yr",
+        note: "Equivalent to 1450 NOK/mo — up to 1500 concurrent listeners. 14-day free trial.",
+        badge: "Save 2 months",
+        cta: "Get started",
+      },
+      event: {
+        title: "Single event",
+        price: "950 NOK",
+        period: "/event",
+        note: "Broadcast for one day. You set up the coverage area yourselves (radius or polygon) after payment. TONO costs for music use are covered by the organizer.",
+        cta: "Get started",
+      },
+      trialNote: "The trial is limited to 150 concurrent listeners.",
     },
     features: {
       eyebrow: "TECHNOLOGY",
@@ -533,6 +562,11 @@ const en: Dictionary = {
       checkoutButton: "Go to payment",
       checkingOut: "Opening payment…",
       checkoutError: "Couldn't start checkout. Try again, or contact us at post@adience.no.",
+      startTrialButton: "Start free trial",
+      modalTextTrial: "Register a payment card to start a 14-day free trial — your card won't be charged until the trial ends, and you can cancel anytime in the meantime. The trial is limited to 150 concurrent listeners.",
+      trialNote: "14-day free trial. Your card is charged automatically afterwards unless you cancel.",
+      subscriptionCapNote: "The subscription covers up to 1500 concurrent listeners.",
+      eventTonoNote: "Broadcast for one day. You set up the coverage area yourselves (radius up to 1000 m, or a polygon) after payment. TONO costs for music use are covered by the organizer, not by Ådience.",
     },
   },
   admin: {

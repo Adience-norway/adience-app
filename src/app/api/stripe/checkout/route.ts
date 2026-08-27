@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
   const priceYearly = process.env.STRIPE_PRICE_YEARLY;
   const priceEvent = process.env.STRIPE_PRICE_EVENT;
 
-  const body = (await req.json()) as { arenaId?: string; plan?: string; locale?: string };
+  const body = (await req.json()) as { arenaId?: string; plan?: string; locale?: string; trial?: boolean };
   const locale: Locale = body.locale === "en" ? "en" : "no";
   const err = ERRORS[locale];
 
@@ -99,6 +99,11 @@ export async function POST(req: NextRequest) {
 
   const priceId = plan === "month" ? priceMonthly : plan === "year" ? priceYearly : priceEvent;
   const mode: Stripe.Checkout.SessionCreateParams.Mode = plan === "event" ? "payment" : "subscription";
+  // 14-dagers prøveperiode: kun ment for førstegangsregistrering (se
+  // registrer/RegistrerPageContent.tsx) -- kortet registreres med det samme,
+  // ingen belastning før prøveperioden er over, og abonnementet starter
+  // automatisk med mindre eieren aktivt sier opp innen fristen.
+  const trial = body.trial === true && mode === "subscription";
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -110,7 +115,13 @@ export async function POST(req: NextRequest) {
       success_url: `${minSideUrl}#oversikt?checkout=success`,
       cancel_url: `${minSideUrl}#oversikt?checkout=cancelled`,
       metadata: { arena_id: arenaId, plan, arenanavn: arena?.arenanavn ?? "" },
-      subscription_data: mode === "subscription" ? { metadata: { arena_id: arenaId, plan } } : undefined,
+      subscription_data: mode === "subscription"
+        ? {
+            metadata: { arena_id: arenaId, plan },
+            ...(trial ? { trial_period_days: 14 } : {}),
+          }
+        : undefined,
+      payment_method_collection: mode === "subscription" ? "always" : undefined,
     });
 
     if (!session.url) {

@@ -1865,6 +1865,11 @@ function AbonnementSection({
   const [checkoutPlan, setCheckoutPlan] = useState<"month" | "year" | "event" | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
   const dagerIgjen = pilot ? Math.max(0, Math.ceil((new Date(pilot.slutt_dato).getTime() - Date.now()) / 86_400_000)) : null;
+  // Ingen abonnementer-rad ennå = arenaen har aldri startet et abonnement før
+  // -- da får de 14 dagers gratis prøveperiode (kort registreres, ingen
+  // belastning før fristen). Gjelder kun første gang, ikke ved gjenoppstart
+  // etter en avsluttet periode (abonnement er da ikke lenger null).
+  const kvalifisererForProve = !abonnement;
 
   async function handleCheckout(plan: "month" | "year" | "event") {
     setCheckoutPlan(plan);
@@ -1875,7 +1880,7 @@ function AbonnementSection({
     const res = await fetch("/api/stripe/checkout", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
-      body: JSON.stringify({ arenaId, plan, locale }),
+      body: JSON.stringify({ arenaId, plan, locale, trial: kvalifisererForProve && plan !== "event" }),
     });
     const data = await res.json();
     if (!res.ok || !data.url) {
@@ -1898,7 +1903,7 @@ function AbonnementSection({
         </div>
 
         <button onClick={() => setShowUpgrade(true)} style={{ ...coralBtnStyleAuto, marginTop: "24px" }}>
-          {t.upgradeButton}
+          {kvalifisererForProve ? t.startTrialButton : t.upgradeButton}
         </button>
       </div>
 
@@ -1907,19 +1912,20 @@ function AbonnementSection({
           <div style={modalBoxStyle} onClick={(e) => e.stopPropagation()}>
             <h3 style={{ ...sectionHeadingStyle, marginBottom: "12px" }}>{t.modalTitle}</h3>
             <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "14px", lineHeight: 1.6, marginBottom: "20px" }}>
-              {t.modalText}
+              {kvalifisererForProve ? t.modalTextTrial : t.modalText}
             </p>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {([
-                { plan: "month" as const, title: t.planMonthTitle, price: t.planMonthPrice },
-                { plan: "year" as const, title: t.planYearTitle, price: t.planYearPrice },
-                { plan: "event" as const, title: t.planEventTitle, price: t.planEventPrice },
-              ]).map(({ plan, title, price }) => (
+                { plan: "month" as const, title: t.planMonthTitle, price: t.planMonthPrice, note: kvalifisererForProve ? t.trialNote : t.subscriptionCapNote },
+                { plan: "year" as const, title: t.planYearTitle, price: t.planYearPrice, note: kvalifisererForProve ? t.trialNote : t.subscriptionCapNote },
+                { plan: "event" as const, title: t.planEventTitle, price: t.planEventPrice, note: t.eventTonoNote },
+              ]).map(({ plan, title, price, note }) => (
                 <div key={plan} style={{ ...cardStyle, padding: "16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
                   <div>
                     <div style={{ fontWeight: 600, fontSize: "14px", color: "#fff" }}>{title}</div>
                     <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)" }}>{price}</div>
+                    <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", marginTop: "4px", maxWidth: "260px" }}>{note}</div>
                   </div>
                   <button
                     onClick={() => handleCheckout(plan)}

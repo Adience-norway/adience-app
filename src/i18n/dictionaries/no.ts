@@ -1,12 +1,19 @@
 const no: {
   home: {
-    nav: Record<"features" | "download" | "demo" | "cast" | "blog" | "minSide", string>;
+    nav: Record<"features" | "pricing" | "download" | "demo" | "cast" | "blog" | "minSide", string>;
     hero: {
       badge: string; headlinePrefix: string; subtext: string; followLabel: string;
       ctaPilot: string; socialProofCount: string; socialProofText: string;
     };
     intro: { heading: string; body: string };
     stats: Record<"delay" | "uptime" | "encryption", { value: string; label: string }>;
+    pricing: {
+      eyebrow: string; title: string; subtitle: string;
+      month: { title: string; price: string; period: string; note: string; cta: string };
+      year: { title: string; price: string; period: string; note: string; badge: string; cta: string };
+      event: { title: string; price: string; period: string; note: string; cta: string };
+      trialNote: string;
+    };
     features: {
       eyebrow: string; title: string;
       card1: { title: string; description: string };
@@ -199,6 +206,8 @@ const no: {
       planYearTitle: string; planYearPrice: string;
       planEventTitle: string; planEventPrice: string;
       checkoutButton: string; checkingOut: string; checkoutError: string;
+      startTrialButton: string; modalTextTrial: string; trialNote: string;
+      subscriptionCapNote: string; eventTonoNote: string;
     };
   };
   admin: {
@@ -231,6 +240,7 @@ const no: {
   home: {
     nav: {
       features: "Funksjoner",
+      pricing: "Priser",
       download: "Last ned",
       demo: "Demo",
       cast: "Cast",
@@ -238,7 +248,7 @@ const no: {
       minSide: "Min side",
     },
     hero: {
-      badge: "LIVE STREAMING · 0,5 SEK FORSINKELSE",
+      badge: "LIVE STREAMING · SANNTID",
       headlinePrefix: "Raise the",
       subtext: "Den eksklusive lydkanalen for publikum som er fysisk til stede. Kommentarer, statistikk og eksklusivt innhold — direkte i øret.",
       followLabel: "Følg historiene bak Ådience",
@@ -254,6 +264,34 @@ const no: {
       delay: { value: "Sanntid", label: "Forsinkelse" },
       uptime: { value: "99.99%", label: "Oppetid" },
       encryption: { value: "256-bit", label: "AES-kryptering" },
+    },
+    pricing: {
+      eyebrow: "PRISER",
+      title: "Enkel og forutsigbar prising",
+      subtitle: "Ingen skjulte kostnader. Start med en gratis prøveperiode — kortet belastes ikke før den er over.",
+      month: {
+        title: "Månedlig abonnement",
+        price: "1950 kr",
+        period: "/mnd",
+        note: "Inntil 1500 samtidige lyttere. 14 dagers gratis prøveperiode.",
+        cta: "Kom i gang",
+      },
+      year: {
+        title: "Årsabonnement",
+        price: "17 400 kr",
+        period: "/år",
+        note: "Tilsvarer 1450 kr/mnd — inntil 1500 samtidige lyttere. 14 dagers gratis prøveperiode.",
+        badge: "Spar 2 måneder",
+        cta: "Kom i gang",
+      },
+      event: {
+        title: "Enkeltarrangement",
+        price: "950 kr",
+        period: "/arrangement",
+        note: "Sending i ett døgn. Dere setter selv opp dekningsområde (radius eller polygon) etter betaling. TONO-kostnader for musikkbruk dekkes av arrangøren.",
+        cta: "Kom i gang",
+      },
+      trialNote: "Prøveperioden er begrenset til 150 samtidige lyttere.",
     },
     features: {
       eyebrow: "TEKNOLOGI",
@@ -763,6 +801,11 @@ const no: {
       checkoutButton: "Gå til betaling",
       checkingOut: "Åpner betaling…",
       checkoutError: "Kunne ikke starte betaling. Prøv igjen, eller ta kontakt på post@adience.no.",
+      startTrialButton: "Start gratis prøveperiode",
+      modalTextTrial: "Registrer betalingskort for å starte en 14 dagers gratis prøveperiode — kortet belastes ikke før prøveperioden er over, og du kan si opp når som helst i mellomtiden. Pilotperioden er begrenset til 150 samtidige lyttere.",
+      trialNote: "14 dagers gratis prøveperiode. Kortet belastes automatisk etterpå med mindre du sier opp.",
+      subscriptionCapNote: "Abonnementet dekker inntil 1500 samtidige lyttere.",
+      eventTonoNote: "Sending i ett døgn. Dere setter selv opp dekningsområde (radius inntil 1000 m, eller polygon) etter betaling. TONO-kostnader for musikkbruk dekkes av arrangøren, ikke av Ådience.",
     },
   },
   admin: {

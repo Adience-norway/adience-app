@@ -23,6 +23,9 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
             <a href="#features" style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", fontWeight: 500, textDecoration: "none", letterSpacing: "0.02em" }}>
               {t.nav.features}
             </a>
+            <a href="#priser" style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", fontWeight: 500, textDecoration: "none", letterSpacing: "0.02em" }}>
+              {t.nav.pricing}
+            </a>
             <a href="#download" style={{ color: "rgba(255,255,255,0.65)", fontSize: "14px", fontWeight: 500, textDecoration: "none", letterSpacing: "0.02em" }}>
               {t.nav.download}
             </a>
@@ -255,6 +258,96 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
               index={2}
             />
           </div>
+        </div>
+      </section>
+
+      {/* ─── PRISER ─── */}
+      <section id="priser" style={{ padding: "0 24px 120px" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: "56px" }}>
+            <span style={{
+              fontFamily: "var(--font-ibm-plex-mono), monospace",
+              fontSize: "12px",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: "#33D3C4",
+              fontWeight: 500,
+            }}>
+              {t.pricing.eyebrow}
+            </span>
+            <h2 style={{
+              fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+              fontWeight: 800,
+              fontSize: "clamp(32px, 4vw, 52px)",
+              letterSpacing: "-0.02em",
+              marginTop: "12px",
+              marginBottom: "12px",
+              color: "#ffffff",
+            }}>
+              {t.pricing.title}
+            </h2>
+            <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "16px", maxWidth: "520px", margin: "0 auto" }}>
+              {t.pricing.subtitle}
+            </p>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "24px" }}>
+            {([
+              { plan: t.pricing.month, badge: null },
+              { plan: t.pricing.year, badge: t.pricing.year.badge },
+              { plan: t.pricing.event, badge: null },
+            ]).map(({ plan, badge }, i) => (
+              <div key={i} style={{
+                backgroundColor: "#1E293B",
+                border: badge ? "1.5px solid #33D3C4" : "1px solid rgba(51,211,196,0.12)",
+                borderRadius: "20px",
+                padding: "40px 32px",
+                position: "relative",
+                display: "flex",
+                flexDirection: "column" as const,
+              }}>
+                {badge && (
+                  <span style={{
+                    position: "absolute", top: "-14px", left: "32px",
+                    backgroundColor: "#33D3C4", color: "#073E46",
+                    fontSize: "12px", fontWeight: 700, letterSpacing: "0.04em",
+                    padding: "6px 14px", borderRadius: "999px",
+                  }}>
+                    {badge}
+                  </span>
+                )}
+                <h3 style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 700, fontSize: "20px", color: "#ffffff", marginBottom: "16px" }}>
+                  {plan.title}
+                </h3>
+                <div style={{ display: "flex", alignItems: "baseline", gap: "6px", marginBottom: "16px" }}>
+                  <span style={{ fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontWeight: 800, fontSize: "40px", color: "#33D3C4" }}>
+                    {plan.price}
+                  </span>
+                  <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "15px" }}>{plan.period}</span>
+                </div>
+                <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: 1.6, marginBottom: "28px", flex: 1 }}>
+                  {plan.note}
+                </p>
+                <a href={`${prefix}/registrer`} style={{
+                  textAlign: "center" as const,
+                  backgroundColor: badge ? "#33D3C4" : "rgba(255,255,255,0.06)",
+                  color: badge ? "#073E46" : "#ffffff",
+                  border: badge ? "none" : "1px solid rgba(255,255,255,0.15)",
+                  fontWeight: 700,
+                  fontSize: "14px",
+                  padding: "12px 20px",
+                  borderRadius: "8px",
+                  textDecoration: "none",
+                }}>
+                  {plan.cta}
+                </a>
+              </div>
+            ))}
+          </div>
+
+          <p style={{ textAlign: "center", color: "rgba(255,255,255,0.3)", fontSize: "13px", marginTop: "32px" }}>
+            {t.pricing.trialNote}
+          </p>
         </div>
       </section>
 
