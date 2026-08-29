@@ -63,6 +63,14 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   const [devices, setDevices]           = useState<MediaDeviceInfo[]>([]);
   const [selectedDevice, setSelectedDevice] = useState("");
   const [eqPreset, setEqPreset]         = useState<"Plain" | "Voice" | "Music">("Plain");
+  // Local monitor (hear-yourself-back) is fine with a real mic + real
+  // headphones, but is exactly what turns a loopback source (VB-Cable,
+  // BlackHole -- routing system audio like Spotify into the browser) into a
+  // feedback loop: the monitor plays back to the system's current default
+  // output, which for a loopback setup IS the same virtual device being
+  // captured from. Default on (preserves prior behavior for real mics);
+  // toggleable so loopback-source users can kill it.
+  const [monitorEnabled, setMonitorEnabled] = useState(true);
   const [status, setStatus]             = useState<ConnectionStatus>("idle");
   const [castMode, setCastMode]         = useState<"live" | "hold">("live");
   const [modeChanging, setModeChanging] = useState(false);
@@ -246,7 +254,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
       // didn't do anything" even though the public stream is correct.
       const outgoing = ctx.createMediaStreamDestination();
       const monitorGain = ctx.createGain();
-      monitorGain.gain.value = castMode === "live" ? 1 : 0;
+      monitorGain.gain.value = castMode === "live" && monitorEnabled ? 1 : 0;
       monitorGainRef.current = monitorGain;
 
       // Connect chain: source → mono downmix → [filters] → analyser → destination (+ outgoing tap)
@@ -315,6 +323,16 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
     } catch { /* keep last known count */ }
   }
 
+  function toggleMonitor() {
+    const next = !monitorEnabled;
+    setMonitorEnabled(next);
+    const gainNode = monitorGainRef.current;
+    const ctx = audioCtxRef.current;
+    if (gainNode && ctx) {
+      gainNode.gain.setTargetAtTime(castMode === "live" && next ? 1 : 0, ctx.currentTime, 0.05);
+    }
+  }
+
   // Lets the speaker team switch Showtime/Waiting mid-session without
   // stopping the WebRTC connection -- only meaningful for arenas with a
   // holdmusikk service running (currently just the demo arena). The mic
@@ -340,7 +358,7 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
         const gainNode = monitorGainRef.current;
         const ctx = audioCtxRef.current;
         if (gainNode && ctx) {
-          gainNode.gain.setTargetAtTime(mode === "live" ? 1 : 0, ctx.currentTime, 0.05);
+          gainNode.gain.setTargetAtTime(mode === "live" && monitorEnabled ? 1 : 0, ctx.currentTime, 0.05);
         }
       }
     } catch { /* keep previous mode on failure */ }
@@ -545,6 +563,26 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
                   ))
               }
             </select>
+            {/* Kun relevant for en loopback-kilde (VB-Cable, BlackHole o.l.) --
+                med en ekte mikrofon vil du nesten alltid ha overvåkingen på.
+                Skru den av hvis kilden er systemlyd/en virtuell enhet og du
+                hører en hylende feedback-loop. */}
+            <button
+              onClick={toggleMonitor}
+              style={{
+                marginTop: "10px",
+                width: "100%",
+                padding: "10px",
+                borderRadius: "8px",
+                border: monitorEnabled ? "1px solid rgba(255,255,255,0.12)" : "1.5px solid #33D3C4",
+                backgroundColor: monitorEnabled ? "rgba(255,255,255,0.04)" : "rgba(51,211,196,0.1)",
+                color: monitorEnabled ? "rgba(255,255,255,0.5)" : "#33D3C4",
+                fontSize: "13px",
+                cursor: "pointer",
+              }}
+            >
+              {t.monitorLabel}: {monitorEnabled ? t.monitorOn : t.monitorOff}
+            </button>
           </Section>
 
           {/* ─── EQ Preset ─── */}

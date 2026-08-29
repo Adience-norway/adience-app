@@ -231,6 +231,7 @@ const no: {
     title: string; subtitle: string; subtitleVerified: string;
     sectionKilde: string; sectionLydniva: string;
     noMicFound: string; micFallback: string;
+    monitorLabel: string; monitorOn: string; monitorOff: string;
     errorFillStreamId: string; errorAntMedia: string; errorMicConnect: string;
     passordLabel: string; passordPlaceholder: string; laasOpp: string; verifiserer: string;
     passordOk: string; passordFeil: string; passordPaakrevd: string;
@@ -1154,6 +1155,9 @@ const no: {
     sectionLydniva: "LYDNIVÅ",
     noMicFound: "Ingen mikrofoner funnet",
     micFallback: "Mikrofon",
+    monitorLabel: "Hør meg selv",
+    monitorOn: "På",
+    monitorOff: "Av (unngår feedback fra virtuelle kilder)",
     errorFillStreamId: "Fyll inn Stream ID før du starter.",
     passordLabel: "PASSORD",
     passordPlaceholder: "6-sifret passord",
