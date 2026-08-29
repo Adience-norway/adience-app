@@ -71,6 +71,11 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   // captured from. Default on (preserves prior behavior for real mics);
   // toggleable so loopback-source users can kill it.
   const [monitorEnabled, setMonitorEnabled] = useState(true);
+  // Mono is the safe default (see the forced-mono comment below), but it
+  // needlessly discards the stereo image for a loopback source carrying
+  // real stereo content (e.g. Spotify via VB-Cable/BlackHole) -- let the
+  // speaker opt into stereo explicitly for that case.
+  const [channelMode, setChannelMode] = useState<"mono" | "stereo">("mono");
   const [status, setStatus]             = useState<ConnectionStatus>("idle");
   const [castMode, setCastMode]         = useState<"live" | "hold">("live");
   const [modeChanging, setModeChanging] = useState(false);
@@ -202,30 +207,34 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
       // channelCount: 1 -- a stereo audio interface with only one physical
       // input wired up (e.g. a mic on channel 1, channel 2 unconnected)
       // otherwise gets captured as 2-channel with one silent channel, which
-      // plays back audible only in one ear instead of centered mono.
+      // plays back audible only in one ear instead of centered mono. Only
+      // applied in "mono" mode -- a loopback source carrying real stereo
+      // content (system audio via VB-Cable) should keep both channels.
       const constraints: MediaStreamConstraints = {
         audio: {
           ...(selectedDevice ? { deviceId: { exact: selectedDevice } } : {}),
           echoCancellation: false,
           noiseSuppression: false,
           autoGainControl: false,
-          channelCount: 1,
+          channelCount: channelMode === "mono" ? 1 : 2,
         },
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       const sourceNode = ctx.createMediaStreamSource(stream);
 
-      // The channelCount:1 constraint above is only a hint -- audio
-      // interface drivers (e.g. Audient) can silently ignore it and still
-      // deliver 2 channels with only one actually carrying signal (mic on
-      // input 1, input 2 unconnected), which plays back in one ear only.
+      // The channelCount constraint above is only a hint -- audio interface
+      // drivers (e.g. Audient) can silently ignore it and still deliver 2
+      // channels with only one actually carrying signal (mic on input 1,
+      // input 2 unconnected), which plays back in one ear only.
       // MediaStreamAudioSourceNode has no real "input" of its own (it's a
       // source), so setting channelCount* directly on it is unreliable --
-      // insert a real node with an actual incoming connection instead,
-      // where the browser's downmix (0.5*(L+R) -> mono) is well-defined.
+      // insert a real node with an actual incoming connection instead. In
+      // mono mode this forces the browser's well-defined downmix
+      // (0.5*(L+R) -> mono); in stereo mode it's a plain 2-channel
+      // passthrough, no summing.
       const monoDownmix = ctx.createGain();
-      monoDownmix.channelCount = 1;
+      monoDownmix.channelCount = channelMode === "mono" ? 1 : 2;
       monoDownmix.channelCountMode = "explicit";
       monoDownmix.channelInterpretation = "speakers";
       sourceNode.connect(monoDownmix);
@@ -583,6 +592,32 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
             >
               {t.monitorLabel}: {monitorEnabled ? t.monitorOn : t.monitorOff}
             </button>
+            {/* Mono er trygg standard for en ekte mikrofon/lydgrensesnitt.
+                Stereo er for en loopback-kilde med ekte stereoinnhold (f.eks.
+                Spotify via VB-Cable) -- da vil du beholde stereobildet i
+                stedet for å slå det sammen til mono. Kan bare endres før
+                sending starter, siden det krever en ny getUserMedia-økt. */}
+            <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
+              {(["mono", "stereo"] as const).map(m => (
+                <button
+                  key={m}
+                  onClick={() => !isLive && setChannelMode(m)}
+                  disabled={isLive || status === "connecting"}
+                  style={{
+                    flex: 1,
+                    padding: "10px",
+                    borderRadius: "8px",
+                    border: channelMode === m ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
+                    backgroundColor: channelMode === m ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
+                    color: channelMode === m ? "#33D3C4" : "rgba(255,255,255,0.5)",
+                    fontSize: "13px",
+                    cursor: isLive ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {m === "mono" ? t.channelModeMono : t.channelModeStereo}
+                </button>
+              ))}
+            </div>
           </Section>
 
           {/* ─── EQ Preset ─── */}

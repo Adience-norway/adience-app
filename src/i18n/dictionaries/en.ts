@@ -915,6 +915,8 @@ const en: Dictionary = {
     monitorLabel: "Hear myself",
     monitorOn: "On",
     monitorOff: "Off (avoids feedback from virtual sources)",
+    channelModeMono: "Mono (microphone)",
+    channelModeStereo: "Stereo (music/system audio)",
     errorFillStreamId: "Enter a Stream ID before starting.",
     passordLabel: "PASSWORD",
     passordPlaceholder: "6-digit password",

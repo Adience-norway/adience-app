@@ -232,6 +232,7 @@ const no: {
     sectionKilde: string; sectionLydniva: string;
     noMicFound: string; micFallback: string;
     monitorLabel: string; monitorOn: string; monitorOff: string;
+    channelModeMono: string; channelModeStereo: string;
     errorFillStreamId: string; errorAntMedia: string; errorMicConnect: string;
     passordLabel: string; passordPlaceholder: string; laasOpp: string; verifiserer: string;
     passordOk: string; passordFeil: string; passordPaakrevd: string;
@@ -1158,6 +1159,8 @@ const no: {
     monitorLabel: "Hør meg selv",
     monitorOn: "På",
     monitorOff: "Av (unngår feedback fra virtuelle kilder)",
+    channelModeMono: "Mono (mikrofon)",
+    channelModeStereo: "Stereo (musikk/systemlyd)",
     errorFillStreamId: "Fyll inn Stream ID før du starter.",
     passordLabel: "PASSORD",
     passordPlaceholder: "6-sifret passord",
