@@ -137,14 +137,20 @@ export async function POST(req: NextRequest) {
       // i fragmentet, ikke en ekte query-parameter).
       success_url: `${minSideUrl}?checkout=success&plan=${plan}#oversikt`,
       cancel_url: `${minSideUrl}?checkout=cancelled#oversikt`,
-      metadata: { arena_id: arenaId, plan, arenanavn: arena?.arenanavn ?? "" },
+      metadata: { arena_id: arenaId, plan, arenanavn: arena?.arenanavn ?? "", trial: trial ? "true" : "false" },
       subscription_data: mode === "subscription"
         ? {
             metadata: { arena_id: arenaId, plan },
             ...(trial ? { trial_period_days: 14 } : {}),
           }
         : undefined,
-      payment_method_collection: mode === "subscription" ? "always" : undefined,
+      // Vi gir bort 14 dager med en begrenset (150 lyttere) tjeneste -- da er
+      // det unødvendig friksjon å kreve kort med det samme. "if_required"
+      // hopper over kort-steget når ingenting forfaller ved selve økten (som
+      // er tilfellet her, siden trial_period_days er satt over). Ved ordinært
+      // kjøp (ikke prøve) forfaller beløpet med det samme, så da kreves kort
+      // uansett -- "always" der er derfor bare eksplisitt, ikke en innstramming.
+      payment_method_collection: mode === "subscription" ? (trial ? "if_required" : "always") : undefined,
     });
 
     if (!session.url) {

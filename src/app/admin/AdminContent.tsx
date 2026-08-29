@@ -675,10 +675,14 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
 
   async function toggleAdmin(kandidat: Kandidat) {
     setOppdaterer(kandidat.id);
-    const { error } = await supabase
-      .from("brukere")
-      .update({ er_adience_admin: !kandidat.er_adience_admin })
-      .eq("id", kandidat.id);
+    // Går via en RPC (security definer), ikke et direkte .update() -- en
+    // kolonne-lås hindrer nå `authenticated` fra å skrive er_adience_admin
+    // direkte, siden det var akkurat den veien en vanlig bruker kunne gitt
+    // seg selv admin-tilgang. RPC-en sjekker selv at innringeren er admin.
+    const { error } = await supabase.rpc("set_bruker_admin_status", {
+      p_bruker_id: kandidat.id,
+      p_ny_verdi: !kandidat.er_adience_admin,
+    });
     setOppdaterer(null);
     if (error) { setFeilmelding(error.message); return; }
     setTreff(prev => prev.map(k => k.id === kandidat.id ? { ...k, er_adience_admin: !k.er_adience_admin } : k));
@@ -687,7 +691,7 @@ function AdminManagerSeksjon({ dict, locale }: { dict: Dictionary; locale: Local
 
   async function fjernGodkjent(admin: GodkjentAdmin) {
     setOppdaterer(admin.id);
-    const { error } = await supabase.from("brukere").update({ er_adience_admin: false }).eq("id", admin.id);
+    const { error } = await supabase.rpc("set_bruker_admin_status", { p_bruker_id: admin.id, p_ny_verdi: false });
     setOppdaterer(null);
     if (error) { setFeilmelding(error.message); return; }
     setGodkjente(prev => prev.filter(a => a.id !== admin.id));

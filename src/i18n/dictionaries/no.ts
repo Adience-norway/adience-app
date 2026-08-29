@@ -196,6 +196,8 @@ const no: {
       downloadPdf: string;
       posterCardTitle: string; posterCardDesc: string; printPoster: string;
       posterTitlePrefix: string; posterHeadlinePrefix: string; posterSubline: string; posterBody: string;
+      sendInfoTitle: string; sendInfoHelp: string; sendToSpeakerteam: string; sendToSelf: string;
+      sending: string; sentOk: string; sendError: string;
     };
     abonnement: {
       title: string; typeLabel: string; statusLabel: string; pilotDaysLabel: string; totalPriceLabel: string;
@@ -786,6 +788,13 @@ const no: {
       posterSubline: "Last ned appen, skann QR-koden, og lytt til vårt speakerteam.",
       posterBody: "Ikke bare før kampen — gjennom hele opplevelsen.",
       downloadPdf: "Last ned PDF",
+      sendInfoTitle: "Del med speakerteamet",
+      sendInfoHelp: "Send stream-ID, passord og QR-koden over på e-post — til hele speakerteamet, eller til deg selv.",
+      sendToSpeakerteam: "Send til speakerteamet",
+      sendToSelf: "Send til meg selv",
+      sending: "Sender…",
+      sentOk: "✓ Sendt",
+      sendError: "Kunne ikke sende e-post.",
     },
     abonnement: {
       title: "Din plan",

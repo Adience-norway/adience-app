@@ -1761,6 +1761,32 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
   const [qrHvit, setQrHvit] = useState<string | null>(null);
   const [qrTransparent, setQrTransparent] = useState<string | null>(null);
   const [genererer, setGenererer] = useState(false);
+  const [sender, setSender] = useState<"speakerteam" | "meg-selv" | null>(null);
+  const [sendtMal, setSendtMal] = useState<"speakerteam" | "meg-selv" | null>(null);
+  const [sendFeil, setSendFeil] = useState("");
+
+  async function handleSendStreamInfo(mal: "speakerteam" | "meg-selv") {
+    setSender(mal);
+    setSendFeil("");
+    setSendtMal(null);
+    const { data: sessionData } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    try {
+      const res = await fetch("/api/send-stream-info", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${accessToken}` },
+        body: JSON.stringify({ arenaId: arena.id, mal, locale }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? t.sendError);
+      setSendtMal(mal);
+      setTimeout(() => setSendtMal(null), 4000);
+    } catch (err) {
+      setSendFeil(err instanceof Error ? err.message : t.sendError);
+    } finally {
+      setSender(null);
+    }
+  }
   const [castPassord, setCastPassord] = useState<string | null>(null);
 
   // cast_passord er sperret for vanlige select-spørringer i databasen (se
@@ -1891,6 +1917,33 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
                 {t.openCastTool}
               </a>
             </div>
+          </div>
+
+          {/* Send stream-ID + passord + QR (samme innhold som kortet over)
+              rett til speakerteamets registrerte e-poster, eller til deg
+              selv -- så man slipper å kopiere/lime inn manuelt. */}
+          <div style={cardStyle}>
+            <h3 style={{ ...sectionHeadingStyle, marginBottom: "4px" }}>{t.sendInfoTitle}</h3>
+            <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)", marginBottom: "16px" }}>
+              {t.sendInfoHelp}
+            </p>
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" as const, alignItems: "center" }}>
+              <button
+                onClick={() => handleSendStreamInfo("speakerteam")}
+                disabled={sender !== null}
+                style={{ ...coralBtnStyleAuto, opacity: sender !== null ? 0.6 : 1 }}
+              >
+                {sender === "speakerteam" ? t.sending : sendtMal === "speakerteam" ? t.sentOk : t.sendToSpeakerteam}
+              </button>
+              <button
+                onClick={() => handleSendStreamInfo("meg-selv")}
+                disabled={sender !== null}
+                style={{ ...ghostBtnStyle, opacity: sender !== null ? 0.6 : 1 }}
+              >
+                {sender === "meg-selv" ? t.sending : sendtMal === "meg-selv" ? t.sentOk : t.sendToSelf}
+              </button>
+            </div>
+            {sendFeil && <p style={{ fontSize: "13px", color: "#D94F4F", marginTop: "12px" }}>{sendFeil}</p>}
           </div>
 
           {/* QR-forklaringen sitter nå rett over selve QR-kortene den

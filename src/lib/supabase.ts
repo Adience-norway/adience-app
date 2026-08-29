@@ -167,6 +167,8 @@ export type Abonnement = {
   periode_slutt: string | null;
   event_dato: string | null;
   opprettet: string;
+  prove_periode: boolean;
+  paaminnelse_sendt: boolean;
 };
 
 export type PilotPeriode = {

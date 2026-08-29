@@ -546,6 +546,13 @@ const en: Dictionary = {
       posterSubline: "Download the app, scan the QR code, and listen to our speaker team.",
       posterBody: "Not just before the match — throughout the whole experience.",
       downloadPdf: "Download PDF",
+      sendInfoTitle: "Share with the speaker team",
+      sendInfoHelp: "Email the stream ID, password and QR code above — to the whole speaker team, or to yourself.",
+      sendToSpeakerteam: "Send to the speaker team",
+      sendToSelf: "Send to myself",
+      sending: "Sending…",
+      sentOk: "✓ Sent",
+      sendError: "Couldn't send the email.",
     },
     abonnement: {
       title: "Your plan",

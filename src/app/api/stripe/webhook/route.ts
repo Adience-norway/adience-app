@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         if (session.mode === "subscription") {
           const betalingsintervall = plan === "year" ? "ar" : "maned";
           const belop = (session.amount_total ?? 0) / 100;
+          const erProve = session.metadata?.trial === "true";
           await supabase.from("abonnementer").insert({
             arena_id: arenaId,
             type: plan === "year" ? "arlig" : "manedlig",
@@ -55,6 +56,14 @@ export async function POST(req: NextRequest) {
             belop_per_periode: belop,
             betalingsintervall,
             periode_start: new Date().toISOString(),
+            // Satt her fra vår egen kjente 14-dagers konstant fordi Checkout
+            // Session ikke gir oss trial_end direkte -- overskrives uansett
+            // med Stripes egen current_period_end så snart første
+            // customer.subscription.updated kommer inn (samme verdi under
+            // selve prøveperioden, siden Stripe regner prøveperioden som
+            // "current period" for en trialing subscription).
+            periode_slutt: erProve ? new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString() : undefined,
+            prove_periode: erProve,
           });
         } else {
           // Engangsbetaling per arrangement -- ingen løpende periode.

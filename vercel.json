@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/nyhetsbrev-oppfolging",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/prove-paaminnelse",
+      "schedule": "0 8 * * *"
     }
   ]
 }
