@@ -537,6 +537,7 @@ const en: Dictionary = {
       pdfCard1: { title: "How to use Ådience", desc: "Short guide for staff — answers to the audience's most common questions." },
       pdfCard2: { title: "Inspiration for staff and security personnel", desc: "Why Ådience matters, and how they can help." },
       pdfCardSpeakerteam: { title: "For the speaker team — ready to broadcast", desc: "How to connect to the mixer, start a broadcast, and monitor level and quality for your listeners." },
+      pdfCardCasting: { title: "Setting up the Casting window", desc: "Step-by-step for sound engineers and DJs — source, mono/stereo, EQ, and common troubleshooting tips." },
       pdfCardSponsor: { title: "For sponsors and partners", desc: "Join us in building the speaker team — competence, training and development of the arena experience." },
       posterCardTitle: "Poster for the audience",
       posterCardDesc: "A ready-made poster with the arena's own QR code, ready to print and hang up.",

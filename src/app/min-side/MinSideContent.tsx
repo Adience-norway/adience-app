@@ -1826,6 +1826,7 @@ function MediaSection({ arena, dict, locale }: { arena: Arena; dict: Dictionary;
     { fil: `slik-bruker-du-adience${pdfSuffix}`, tittel: t.pdfCard1.title, beskrivelse: t.pdfCard1.desc },
     { fil: `inspirasjon-ansatte-sikkerhet${pdfSuffix}`, tittel: t.pdfCard2.title, beskrivelse: t.pdfCard2.desc },
     { fil: `speakerteam-guide${pdfSuffix}`, tittel: t.pdfCardSpeakerteam.title, beskrivelse: t.pdfCardSpeakerteam.desc },
+    { fil: `castingvinduet-guide${pdfSuffix}`, tittel: t.pdfCardCasting.title, beskrivelse: t.pdfCardCasting.desc },
     { fil: `sponsor-partner-speakerteam${pdfSuffix}`, tittel: t.pdfCardSponsor.title, beskrivelse: t.pdfCardSponsor.desc },
   ];
 

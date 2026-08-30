@@ -192,6 +192,7 @@ const no: {
       pdfCard1: { title: string; desc: string };
       pdfCard2: { title: string; desc: string };
       pdfCardSpeakerteam: { title: string; desc: string };
+      pdfCardCasting: { title: string; desc: string };
       pdfCardSponsor: { title: string; desc: string };
       downloadPdf: string;
       posterCardTitle: string; posterCardDesc: string; printPoster: string;
@@ -781,6 +782,7 @@ const no: {
       pdfCard1: { title: "Slik bruker du Ådience", desc: "Kort guide for ansatte — svar på publikums vanligste spørsmål." },
       pdfCard2: { title: "Inspirasjon for ansatte og sikkerhetspersonell", desc: "Hvorfor Ådience betyr noe, og hvordan de kan bidra." },
       pdfCardSpeakerteam: { title: "Til speakerteamet — klar for sending", desc: "Hvordan dere kobler til mikseren, starter en sending, og overvåker nivå og kvalitet for lytterne." },
+      pdfCardCasting: { title: "Sett opp Castingvinduet", desc: "Steg-for-steg for lydmann og DJ — kilde, mono/stereo, EQ, og vanlige feilsøkingstips." },
       pdfCardSponsor: { title: "Til sponsorer og partnere", desc: "Bli med og bygg speakerteamet — kompetanse, kursing og utvikling av opplevelsen i arenaen." },
       posterCardTitle: "Plakat til publikum",
       posterCardDesc: "En ferdig utformet plakat med arenaens egen QR-kode, klar til å skrives ut og henges opp.",
