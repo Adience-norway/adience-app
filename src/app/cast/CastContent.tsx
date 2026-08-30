@@ -44,9 +44,12 @@ type Cast = Dictionary["cast"];
 /* ─── MAIN PAGE ─── */
 
 // Lets a demo/QR link like /cast?id=ADC... prefill the field instead of
-// requiring the sender to type the stream ID by hand before a demo.
-function initialStreamIdFromUrl(): string {
-  if (typeof window === "undefined") return "";
+// requiring the sender to type the stream ID by hand before a demo. Read in
+// an effect (not as the useState initializer) -- reading window.location
+// during the initial render makes the client's first render disagree with
+// the server-rendered ("") markup, which is a hydration-mismatch error, not
+// just a hydration warning. The effect runs once after hydration completes.
+function streamIdFromUrl(): string {
   return (new URLSearchParams(window.location.search).get("id") ?? "").toUpperCase();
 }
 
@@ -54,7 +57,11 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
   const t = dict.cast;
   const homeHref = locale === "en" ? "/en" : "/";
 
-  const [streamId, setStreamId]         = useState(initialStreamIdFromUrl);
+  const [streamId, setStreamId]         = useState("");
+  useEffect(() => {
+    const fromUrl = streamIdFromUrl();
+    if (fromUrl) setStreamId(fromUrl);
+  }, []);
   const [passord, setPassord]           = useState("");
   const [passordVerifisert, setPassordVerifisert] = useState(false);
   const [arenaNavn, setArenaNavn]       = useState("");
@@ -502,56 +509,63 @@ export function CastContent({ dict, locale }: { dict: Dictionary; locale: Locale
                tilkoblingen forblir åpen uansett valg; dette styrer kun hvilken
                kilde som mikses inn i den offentlige sendingen. Kun aktiv (og
                trykkbar) mens man faktisk sender — før/etter det reflekterer
-               boksene bare isLive som før. ─── */}
-          <Section label="STATUS">
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                type="button"
-                onClick={() => handleToggleMode("live")}
-                disabled={!isLive || modeChanging}
-                style={{
-                  flex: 1,
-                  padding: "14px",
-                  borderRadius: "8px",
-                  textAlign: "center" as const,
-                  cursor: isLive && !modeChanging ? "pointer" : "default",
-                  border: isLive && castMode === "live" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
-                  backgroundColor: isLive && castMode === "live" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
-                  color: isLive && castMode === "live" ? "#33D3C4" : "rgba(255,255,255,0.5)",
-                  fontWeight: 700,
-                  fontSize: "14px",
-                  letterSpacing: "0.06em",
-                  fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-                  transition: "background-color 1.5s ease, border-color 1.5s ease, color 1.5s ease",
-                }}
-              >
-                SHOWTIME
-              </button>
-              <button
-                type="button"
-                onClick={() => handleToggleMode("hold")}
-                disabled={!isLive || modeChanging}
-                style={{
-                  width: "110px",
-                  flexShrink: 0,
-                  padding: "14px 8px",
-                  borderRadius: "8px",
-                  textAlign: "center" as const,
-                  cursor: isLive && !modeChanging ? "pointer" : "default",
-                  border: isLive && castMode === "hold" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
-                  backgroundColor: isLive && castMode === "hold" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
-                  color: isLive && castMode === "hold" ? "#33D3C4" : "rgba(255,255,255,0.5)",
-                  fontWeight: 700,
-                  fontSize: "12px",
-                  letterSpacing: "0.06em",
-                  fontFamily: "var(--font-montserrat), system-ui, sans-serif",
-                  transition: "background-color 1.5s ease, border-color 1.5s ease, color 1.5s ease",
-                }}
-              >
-                WAITING
-              </button>
-            </div>
-          </Section>
+               boksene bare isLive som før. Selve Liquidsoap-tjenesten finnes
+               foreløpig bare for demo-arenaen (se HOLDMUSIKK_ARENAER) -- for
+               enhver annen arena feiler kontroll-kallet stille (handleToggleMode
+               beholder bare forrige modus), så knappene ville sett klikkbare ut
+               uten å gjøre noe. Vis dem derfor kun for arenaer som faktisk har
+               tjenesten. ─── */}
+          {HOLDMUSIKK_ARENAER.has(streamId.trim()) && (
+            <Section label="STATUS">
+              <div style={{ display: "flex", gap: "10px" }}>
+                <button
+                  type="button"
+                  onClick={() => handleToggleMode("live")}
+                  disabled={!isLive || modeChanging}
+                  style={{
+                    flex: 1,
+                    padding: "14px",
+                    borderRadius: "8px",
+                    textAlign: "center" as const,
+                    cursor: isLive && !modeChanging ? "pointer" : "default",
+                    border: isLive && castMode === "live" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
+                    backgroundColor: isLive && castMode === "live" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
+                    color: isLive && castMode === "live" ? "#33D3C4" : "rgba(255,255,255,0.5)",
+                    fontWeight: 700,
+                    fontSize: "14px",
+                    letterSpacing: "0.06em",
+                    fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+                    transition: "background-color 1.5s ease, border-color 1.5s ease, color 1.5s ease",
+                  }}
+                >
+                  SHOWTIME
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleMode("hold")}
+                  disabled={!isLive || modeChanging}
+                  style={{
+                    width: "110px",
+                    flexShrink: 0,
+                    padding: "14px 8px",
+                    borderRadius: "8px",
+                    textAlign: "center" as const,
+                    cursor: isLive && !modeChanging ? "pointer" : "default",
+                    border: isLive && castMode === "hold" ? "1.5px solid #33D3C4" : "1px solid rgba(255,255,255,0.12)",
+                    backgroundColor: isLive && castMode === "hold" ? "rgba(51,211,196,0.1)" : "rgba(255,255,255,0.04)",
+                    color: isLive && castMode === "hold" ? "#33D3C4" : "rgba(255,255,255,0.5)",
+                    fontWeight: 700,
+                    fontSize: "12px",
+                    letterSpacing: "0.06em",
+                    fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+                    transition: "background-color 1.5s ease, border-color 1.5s ease, color 1.5s ease",
+                  }}
+                >
+                  WAITING
+                </button>
+              </div>
+            </Section>
+          )}
 
           {/* ─── Kilde (fysisk lydenhet) ─── */}
           <Section label={t.sectionKilde}>
