@@ -11,7 +11,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // avviser select("*") med en 42501-feil for HELE spørringen når rollen mangler
 // tabell-nivå SELECT — det degraderer ikke stille til de tillatte kolonnene.
 export const ARENA_SELECT_COLUMNS =
-  "id, arenanavn, kategori, adresse, adresse_gate, postnummer, by, land, lat, lng, geofence_radius, geofence_type, geofence_polygon, org_nummer, kapasitet, stream_id, logo_url, beskrivelse, cover_image_url, holdmusikk_url, holdmusikk_navn, synlig_i_app, vis_infotavle, streaming_aktiv, eier_id, fornavn, etternavn, epost, telefon, opprettet" as const;
+  "id, arenanavn, kategori, adresse, adresse_gate, postnummer, by, land, lat, lng, geofence_radius, geofence_type, geofence_polygon, org_nummer, kapasitet, stream_id, logo_url, beskrivelse, cover_image_url, holdmusikk_url, holdmusikk_navn, synlig_i_app, vis_infotavle, streaming_aktiv, eier_id, fornavn, etternavn, epost, telefon, opprettet, sprak" as const;
 
 export type Arena = {
   id: string;
@@ -44,6 +44,7 @@ export type Arena = {
   epost: string | null;
   telefon: string | null;
   opprettet: string;
+  sprak: "no" | "en";
 };
 
 export type Sponsor = {

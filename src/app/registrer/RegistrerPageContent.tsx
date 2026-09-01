@@ -272,7 +272,7 @@ function ArenaForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; lo
       etternavn: form.etternavn || null,
       epost: form.epost || null,
       telefon: form.telefon || null,
-      logo_url, stream_id,
+      logo_url, stream_id, sprak: locale,
     }).select("id").single();
 
     if (arenaError) {
@@ -595,7 +595,7 @@ function EngangsForm({ onBack, t, locale }: { onBack: () => void; t: Registrer; 
       etternavn: form.etternavn || null,
       epost: form.epost || null,
       telefon: form.telefon || null,
-      logo_url, stream_id,
+      logo_url, stream_id, sprak: locale,
     }).select("id").single();
 
     if (arenaError) {
