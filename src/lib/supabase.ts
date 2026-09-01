@@ -169,6 +169,11 @@ export type Abonnement = {
   opprettet: string;
   prove_periode: boolean;
   paaminnelse_sendt: boolean;
+  tips1_sendt: boolean;
+  tips2_sendt: boolean;
+  vinnback1_sendt: boolean;
+  vinnback2_sendt: boolean;
+  vinnback3_sendt: boolean;
 };
 
 export type PilotPeriode = {
