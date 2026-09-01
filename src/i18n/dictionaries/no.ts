@@ -3,7 +3,7 @@ const no: {
     nav: Record<"features" | "pricing" | "download" | "demo" | "cast" | "blog" | "minSide", string>;
     hero: {
       badge: string; headlinePrefix: string; subtext: string; followLabel: string;
-      ctaPilot: string; socialProofCount: string; socialProofText: string;
+      ctaPilot: string; ctaPilotNote: string; socialProofCount: string; socialProofText: string;
     };
     intro: { heading: string; body: string };
     stats: Record<"delay" | "uptime" | "encryption", { value: string; label: string }>;
@@ -257,8 +257,9 @@ const no: {
       badge: "LIVE STREAMING · SANNTID",
       headlinePrefix: "Raise the",
       subtext: "Den eksklusive lydkanalen for publikum som er fysisk til stede. Kommentarer, statistikk og eksklusivt innhold — direkte i øret.",
-      followLabel: "Følg historiene bak Ådience",
-      ctaPilot: "Har arena og vil starte gratis pilot? →",
+      followLabel: "Eller følg historiene bak Ådience",
+      ctaPilot: "Start din gratis prøveperiode",
+      ctaPilotNote: "14 dager gratis. Ikke noe kredittkort nødvendig.",
       socialProofCount: "200+",
       socialProofText: "arenaer har allerede vist interesse",
     },

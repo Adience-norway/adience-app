@@ -111,32 +111,40 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
               {t.hero.subtext}
             </p>
 
-            {/* CTA: nyhetsbrev (primær) */}
-            <div style={{ maxWidth: "460px" }}>
-              <p style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase", color: "#33D3C4", marginBottom: "12px" }}>
-                {t.hero.followLabel}
-              </p>
-              <NyhetsbrevSignup kilde="forside-hero" />
-            </div>
-
-            {/* CTA: start pilot (tertiær) */}
-            <div style={{ marginTop: "20px" }}>
+            {/* CTA: start prøveperiode (primær) -- den faktiske inntektsveien,
+                og friksjonen er allerede lav (ikke noe kredittkort krevd for
+                prøveperioden), så den fortjener hovedplassen på siden. */}
+            <div>
               <a href={`${prefix}/registrer`} style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: "8px",
-                border: "1.5px solid #33D3C4",
-                color: "#33D3C4",
-                fontSize: "14px",
-                fontWeight: 600,
+                gap: "10px",
+                backgroundColor: "#FF6B4A",
+                color: "#ffffff",
+                fontSize: "17px",
+                fontWeight: 700,
                 fontFamily: "var(--font-montserrat), system-ui, sans-serif",
                 textDecoration: "none",
-                padding: "10px 20px",
-                borderRadius: "8px",
+                padding: "18px 32px",
+                borderRadius: "10px",
                 letterSpacing: "0.02em",
               }}>
                 {t.hero.ctaPilot}
+                <span aria-hidden="true">→</span>
               </a>
+              <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.45)", marginTop: "14px" }}>
+                {t.hero.ctaPilotNote}
+              </p>
+            </div>
+
+            {/* Nyhetsbrev (sekundær) -- fortsatt verdifullt for SEO/innhold
+                over tid, men skal ikke konkurrere med selve inntektskilden
+                om oppmerksomheten. */}
+            <div style={{ maxWidth: "420px", marginTop: "40px" }}>
+              <p style={{ fontSize: "13px", fontWeight: 500, color: "rgba(255,255,255,0.4)", marginBottom: "10px" }}>
+                {t.hero.followLabel}
+              </p>
+              <NyhetsbrevSignup kilde="forside-hero" />
             </div>
 
             {/* Social proof */}
