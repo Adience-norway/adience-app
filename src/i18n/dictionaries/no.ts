@@ -14,6 +14,12 @@ const no: {
       event: { title: string; price: string; period: string; note: string; cta: string };
       trialNote: string;
     };
+    community: {
+      eyebrow: string; title: string;
+      card1: { title: string; description: string };
+      card2: { title: string; description: string };
+      card3: { title: string; description: string };
+    };
     features: {
       eyebrow: string; title: string;
       card1: { title: string; description: string };
@@ -299,6 +305,22 @@ const no: {
         cta: "Kom i gang",
       },
       trialNote: "Prøveperioden er begrenset til 150 samtidige lyttere.",
+    },
+    community: {
+      eyebrow: "FELLESSKAP",
+      title: "For menneskene i arenaen",
+      card1: {
+        title: "Bindeleddet i arenaen",
+        description: "Speakerteamet er der for å skape god stemning — og for å være bindeleddet mellom spillerne, støtteapparatet, klubben og dere i tribunen. Et trent team gir bedre innsikt i spillet og en tryggere opplevelse for alle.",
+      },
+      card2: {
+        title: "Alle skal med",
+        description: "Ådience gjør opplevelsen inkluderende for alle på tribunen — merverdien av å oppleve kampen sammen, side om side, forsvinner aldri.",
+      },
+      card3: {
+        title: "Tettere på klubben",
+        description: "Få innsikt i klubben og menneskene som gjør den til det den er — og se arenaen deres utvikle seg videre, kamp for kamp.",
+      },
     },
     features: {
       eyebrow: "TEKNOLOGI",

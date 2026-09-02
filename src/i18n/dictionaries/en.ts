@@ -58,6 +58,22 @@ const en: Dictionary = {
       },
       trialNote: "The trial is limited to 150 concurrent listeners.",
     },
+    community: {
+      eyebrow: "COMMUNITY",
+      title: "For the people in the venue",
+      card1: {
+        title: "The connector at the venue",
+        description: "The speaker team is there to create a great atmosphere — and to be the connector between the players, the support staff, the club, and you in the stands. A trained team means better insight into the game and a safer experience for everyone.",
+      },
+      card2: {
+        title: "Everyone belongs",
+        description: "Ådience makes the experience inclusive for everyone in the stands — the value of experiencing the match together, side by side, never fades.",
+      },
+      card3: {
+        title: "Closer to the club",
+        description: "Get insight into the club and the people who make it what it is — and watch your venue keep developing, match by match.",
+      },
+    },
     features: {
       eyebrow: "TECHNOLOGY",
       title: "Built for the venue",

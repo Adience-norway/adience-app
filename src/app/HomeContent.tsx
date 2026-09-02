@@ -217,6 +217,61 @@ export function HomeContent({ dict, locale }: { dict: Dictionary; locale: Locale
         </div>
       </div>
 
+      {/* ─── FELLESSKAP -- menneskene i arenaen, ikke teknologien. Bevisst
+           plassert FØR tech-seksjonen: fordelene som faktisk betyr noe for
+           publikum og speakerteamet kommer først, den tekniske begrunnelsen
+           (geofencing/kryptering/sanntid) kommer som underbygging etterpå. ─── */}
+      <section style={{ padding: "120px 24px 0" }}>
+        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
+          <div style={{ textAlign: "center", marginBottom: "64px" }}>
+            <span style={{
+              fontFamily: "var(--font-ibm-plex-mono), monospace",
+              fontSize: "12px",
+              letterSpacing: "0.14em",
+              textTransform: "uppercase" as const,
+              color: "#33D3C4",
+              fontWeight: 500,
+            }}>
+              {t.community.eyebrow}
+            </span>
+            <h2 style={{
+              fontFamily: "var(--font-montserrat), system-ui, sans-serif",
+              fontWeight: 800,
+              fontSize: "clamp(32px, 4vw, 52px)",
+              letterSpacing: "-0.02em",
+              marginTop: "12px",
+              color: "#ffffff",
+            }}>
+              {t.community.title}
+            </h2>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
+            <FeatureCard
+              icon={<MegaphoneIcon />}
+              title={t.community.card1.title}
+              description={t.community.card1.description}
+              accent="#33D3C4"
+              index={0}
+            />
+            <FeatureCard
+              icon={<UsersIcon />}
+              title={t.community.card2.title}
+              description={t.community.card2.description}
+              accent="#FF6B4A"
+              index={1}
+            />
+            <FeatureCard
+              icon={<TrendingUpIcon />}
+              title={t.community.card3.title}
+              description={t.community.card3.description}
+              accent="#33D3C4"
+              index={2}
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ─── FEATURES ─── */}
       <section id="features" style={{ padding: "120px 24px" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
@@ -641,6 +696,35 @@ function PinIcon() {
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
+    </svg>
+  );
+}
+
+function MegaphoneIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+      <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07" />
+    </svg>
+  );
+}
+
+function UsersIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+
+function TrendingUpIcon() {
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
     </svg>
   );
 }
